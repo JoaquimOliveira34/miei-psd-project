@@ -1,0 +1,56 @@
+syntax = "proto2";
+
+message ServerResponse{
+    required bool response = 1 ;
+    optional string error = 2;
+}
+
+message Authentication{
+
+    required CredentialsType credentialsType = 1;
+    required UserType userType = 2;
+    required string  username = 3;
+    required string  password = 4;
+
+    enum UserType {
+        INVESTOR = 0;
+        COMPANY = 1;
+    }
+
+    enum CredentialsType {
+        REGISTER = 0;
+        LOGIN = 1;
+    }
+
+}
+
+message MsgCompany{
+
+    optional int32 companyId = 1;
+
+    required Type type = 2;
+    required int32 amount = 3;
+    optional float rate = 4;
+
+    enum Type{
+        FIXEDRATE = 0;
+        AUCTION = 1;
+    }
+
+}
+
+message MsgInvestor{
+
+    optional int32 investorId = 1;
+
+    required int32 company = 2;
+    required int32 amount = 3;
+    optional float rate = 4;
+
+}
+
+message Notification{
+
+    required int32 company = 1;
+    required string message = 2;
+}
