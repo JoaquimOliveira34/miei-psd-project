@@ -42,4 +42,5 @@ getAuthenticationData( Bin )->
 
 
 newResponse( Bool ) ->
+    
     protos:encode_msg( #'ServerResponse'{ response = Bool } ).

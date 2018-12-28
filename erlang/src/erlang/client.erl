@@ -5,11 +5,9 @@
 
 
 %% API
--export([init/0]).
+-export([init/1]).
 
-init() ->
-
-    {ok, Context} = erlzmq:context(),
+init( Context ) ->
     
     {ok, XrepSocket } = erlzmq:socket(Context, xrep),
 
@@ -21,9 +19,7 @@ init() ->
 %% Map  Addres => Client (pid)
 receiver( XrepSocket, Map ) ->
     
-    {ok, Addr} = erlzmq:recv( XrepSocket ),
-
-    {ok, Body} = erlzmq:recv(XrepSocket),
+    {Addr, Body} = receiveMessage( XrepSocket ),
 
     case maps:get( Addr, Map, error ) of
 
@@ -44,7 +40,8 @@ client( XrepSocket, MyAddr ) ->
     receive 
         {msg, Bin} ->
                         
-            Res =  makeLogin( = translater:getAuthenticationData( Bin ) ),
+            Res =  makeLogin( translater:getAuthenticationData( Bin ) ),
+            
             case Res of 
          
                 error -> 
@@ -75,3 +72,12 @@ makeLogin( {Type, User, Name, Pass} ) ->
 sendMessage(Socket, Addr, Bin  ) ->
     ok = erlzmq:send( Socket, Addr, [sndmore]),
     ok = erlzmq:send( Socket, Bin).
+
+receiveMessage( Socket ) ->
+     
+    {ok, Addr} = erlzmq:recv( Socket ),
+
+    {ok, Body} = erlzmq:recv( Socket ),
+
+    { Addr, Body}.
+

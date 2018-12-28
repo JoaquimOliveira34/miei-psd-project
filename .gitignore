@@ -1,2 +1,3 @@
-./erlang/deps/*
-./erlang/target/*
+erlang/target/*.beam
+erlang/deps/**/*
+!erlang/deps/.keep

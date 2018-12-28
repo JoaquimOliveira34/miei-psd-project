@@ -1,12 +1,12 @@
 ProtoFile = protos
 
 
-compile: src/$(ProtoFile).proto  src/erlzmq.hrl    deps/gpb deps/erlzmq2/ebin
+compile: ./../$(ProtoFile).proto  src/erlzmq.hrl    deps/gpb deps/erlzmq2/ebin
 
 #compile proto files	
-	./deps/gpb/bin/protoc-erl -I. src/$(ProtoFile).proto
-	erlc -I ./deps/gpb/include  src/$(ProtoFile).erl
-	
+	./deps/gpb/bin/protoc-erl -I. ./../$(ProtoFile).proto
+	erlc -I ./deps/gpb/include  ./../$(ProtoFile).erl
+	mv ./../$(ProtoFile).hrl src/
 	
 #compile erl files
 	@echo ""
@@ -23,13 +23,12 @@ compile: src/$(ProtoFile).proto  src/erlzmq.hrl    deps/gpb deps/erlzmq2/ebin
 	
 #move files to target 
 	mv  *.beam  target/
-	rm  src/$(ProtoFile).erl
+	rm  ./../$(ProtoFile).erl
 
 remove:
-	rm -f src/$(ProtoFile).hrl
+	rm -f src/$(ProtoFile).*
+	rm -f ./../$(ProtoFile).erl
+	rm -f ./../$(ProtoFile).hrl
 	rm -f target/*.beam
+	rm -f *.beam
 	
-
-run:
-	cd target/
-	erl < run

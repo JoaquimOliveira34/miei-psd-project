@@ -2,9 +2,9 @@
 -module(accounts).
 
 %% API
--export( [start/0, create_account/3, verify/2]).
+-export( [init/0, create_account/3, verify/2]).
 
-start()->
+init()->
 
     Pid = spawn( fun() -> accounts( #{ "quim"  => {"pass", investor },
                                        "pedro" => {"pass", company} }

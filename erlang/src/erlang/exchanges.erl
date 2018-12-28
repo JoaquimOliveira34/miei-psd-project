@@ -2,19 +2,18 @@
 -module(exchanges).
 
 %% API
--export( [init/1, send/2 ]).
+-export( [init/2, send/2 ]).
 
 
-%% @param Ports - List of Exchanges ports
-init( Ports ) ->
+init( Ports, Context) ->
 
-    Pids = createExchanges( Ports, [] ),
+    Pids = createExchanges( Ports, Context ),
 
-    spawn( fun() -> room( Pids ) end).
+    Room = spawn( fun() -> room( Pids ) end),
+    
+    register( room, Room ).
 
 
-
-%% param Exchanges - List of exchanges ( Pids )
 room( Exchanges ) ->
 
   receive
@@ -25,49 +24,48 @@ room( Exchanges ) ->
         Pid ! {data, Data, From},
         room( Exchanges )
 
-  end.
-
+    end.
 
 
 %% @param Socket - Socket por onde é feita a comunicação
-%% @param Map - Mapa com o Id -> Pid para responder diretamente ao cliente
-exchange( Socket ) ->
+exchange( ReqSocket ) ->
 
     receive
         {send, Data, From } ->
-            gen_tcp:send(Socket, Data),
-            exchange( Socket  );
-
-        {tcp, _ , Data} ->
-            exchange( Socket );
-
-        {tcp_closed, _} ->
-          error;
-        {tcp_error, _, _} ->
-          error
+            
+            ok = erlzmq:send( ReqSocket, Data),
+            Reply = erlzmq:recv( ReqSocket ),
+            From ! { reply, Reply }
     end.
 
 
 
 %% Auxiliary functions
 
+createExchanges( Pids, Context ) -> createExchanges( Pids, Context, []).
 
-createExchanges( [], Pids) -> Pids;
+createExchanges( [], _ , Pids) -> Pids;
 
-createExchanges( [ Port | Tail ], Pids ) ->
+createExchanges( [ Port | Tail ], Context, Pids ) ->
+    
+    {ok, ReQSocket } = erlzmq:socket(Context, req),
 
-    {ok, Socket} = gen_tcp:connect( {127,0,0,1}, Port, [binary, {active,true}]),
+    ok = erlzmq:coonect( ReQSocket, "tcp://localhost:" ++ Port ),
 
-    Pid = spawn( fun() -> exchange( Socket ) end),
+    Pid = spawn( fun() -> exchange( ReQSocket ) end),
 
     createExchanges( Tail , [ Pid | Pids] ).
 
 
 getExchange( List , Company ) ->
-  Size = lists:size( List),
-  Hash = erlang:phash2( Company, Size),
-  lists:nth( Hash, List ).
 
-send( company , Data )  -> true;
+    Size = lists:size( List),
+    
+    Index = Company rem Size,
+  
+    lists:nth( Index, List ).
 
-send( client , Data )  -> false.
+
+send( company , Data ) -> true;
+
+send( client , Data ) -> false.

@@ -10,7 +10,8 @@
 -ifndef('SERVERRESPONSE_PB_H').
 -define('SERVERRESPONSE_PB_H', true).
 -record('ServerResponse',
-        {response               :: boolean() | 0 | 1 % = 1
+        {response               :: boolean() | 0 | 1, % = 1
+         error                  :: iolist() | undefined % = 2
         }).
 -endif.
 
