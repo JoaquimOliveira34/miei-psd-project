@@ -7,6 +7,7 @@
 %% API
 -export([init/1]).
 
+
 init( Context ) ->
     
     {ok, XrepSocket } = erlzmq:socket(Context, xrep),
@@ -35,30 +36,57 @@ receiver( XrepSocket, Map ) ->
     end.
     
 
-
+%% Client to do Authentication process
 client( XrepSocket, MyAddr ) -> 
     receive 
         {msg, Bin} ->
-                        
-            Res =  makeLogin( translater:getAuthenticationData( Bin ) ),
             
-            case Res of 
-         
+            case  makeLogin( translater:getAuthenticationData( Bin ) ) of 
+                
+                ok -> 
+                    sendMessage( XrepSocket, MyAddr, translater:newResponse(true) ),
+                    client( XrepSocket, MyAddr);
+                
                 error -> 
                     sendMessage( XrepSocket, MyAddr, translater:newResponse(false) ),
                     client( XrepSocket, MyAddr);
                 
-                {ok, Type} ->
+                {ok, Id, Type} ->
                     sendMessage( XrepSocket, MyAddr, translater:newResponse(true) ),
-                    client( XrepSocket, MyAddr, Type)
+                    client( XrepSocket, MyAddr, Id, Type)
             end
     end.
 
 
-client( XrepSocket, MyAddr, company ) -> true;
-client( XrepSocket, MyAddr, investor ) -> false.
+%% Authenticated client to do send messages to exchanges 
+client( XrepSocket, MyAddr, MyId, company ) ->
+    receive 
+        { msg, Bin} ->
+            Msg = translater:decode_MsgCompany( Bin ),
+            Msg2 = translater:setIdMsgCompany( Msg, MyId),
+            Bin2= translater:encode_MsgExchange( company, Msg2),
+            exchanges:send( Bin2, MyId );
+            
+        {reply, Bin} -> 
+            sendMessage( XrepSocket, MyAddr, Bin)
+    end,
+    client( XrepSocket, MyAddr, MyId, company);
 
+client( XrepSocket, MyAddr, MyId, investor ) -> 
+    receive 
+        { msg, Bin} ->
+            Msg = translater:decode_MsgInvestor( Bin ),
+            Msg2 = translater:setIdMsgInvestor( Msg, MyId),
+            CompanyId = translater:getCompanyMsgInvestor( Msg2),
+            Bin2= translater:encode_MsgExchange( investor, Msg2),
+            exchanges:send( Bin2, CompanyId );
 
+        {reply, Bin} -> 
+            sendMessage( XrepSocket, MyAddr, Bin)
+    end,
+    client( XrepSocket, MyAddr, MyId, investor).
+
+%% return error | ok | {ok, Id, Type}
 makeLogin( {Type, User, Name, Pass} ) ->
 
     case Type of    
@@ -68,11 +96,13 @@ makeLogin( {Type, User, Name, Pass} ) ->
             accounts:verify( Name, Pass)
     end.
             
-                    
+
+%% return ok                  
 sendMessage(Socket, Addr, Bin  ) ->
     ok = erlzmq:send( Socket, Addr, [sndmore]),
     ok = erlzmq:send( Socket, Bin).
 
+%% return { Addr, Body}
 receiveMessage( Socket ) ->
      
     {ok, Addr} = erlzmq:recv( Socket ),

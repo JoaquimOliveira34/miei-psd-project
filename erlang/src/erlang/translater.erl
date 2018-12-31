@@ -5,42 +5,58 @@
 
 
 %% API
--export( [] ).
+-export( [decode_Authentication/1, decode_MsgInvestor/1, decode_MsgCompany/1,
+          encode_Reply/1, encode_Reply/2,encode_MsgExchange/2,
+          setIdMsgInvestor/2, setIdMsgCompany/2, getCompanyMsgInvestor/1] ).
 
 
-% @param Bin  - Mensagem binaria do tipo 'MsgInvestor'
-% @return  campo company da mensagem 
-getCompany( Bin) ->
+%%%%%%%%%% RECORDS %%%%%%%%%%
+% Return record
+setIdMsgInvestor( Record, Value) ->
+    Record#'MsgInvestor'{ investorId = Value }.
 
-    Msg = proto:decode_msg( Bin, 'MsgInvestor' ),
-    Msg#'MsgInvestor'.company.
+% Return record
+setIdMsgCompany( Record, Value) ->
+    Record#'MsgCompany'{ companyId = Value }.
 
+% Return Company
+getCompanyMsgInvestor( Record) -> 
+    Record#'MsgInvestor'.company.
 
+%%%%%%%%%% DECODE %%%%%%%%%%
 
-% @param Id  - id do cliente 
-% @param Bin  - Mensagem binaria do tipo 'MsgInvestor'
-% @return  A mensagem em binario com o valor investorId preenchido com o valor dado 
-addClientId( investor, Id, Bin ) -> 
+%return record   
+decode_MsgInvestor( Bin ) ->
+    proto:decode_msg( Bin, 'MsgInvestor' ).
 
-    Msg = protos:decode_msg( Bin, 'MsgInvestor'),
-    protos:encode( Msg#'MsgInvestor'{ investorId = Id });
+%return record
+decode_MsgCompany( Bin ) ->
+    proto:decode_msg( Bin, 'MsgCompany' ).
+    
 
-
-% @param Id  - id da company
-% @param Bin  - Mensagem binaria do tipo 'MsgCompany'
-% @return  A mensagem em binario com o valor companyId  preenchido com o valor dado 
-addClientId( company, Id, Bin ) ->
-
-    Msg = protos:decode_msg( Bin, 'MsgCompany'),
-    protos:encode( Msg#'MsgCompany'{ companyId = Id } ).
-  
-
-getAuthenticationData( Bin )->
-
+%return {Type, User, Name, Pass} 
+decode_Authentication( Bin ) ->
     Msg = protos:decode_msg( Bin, 'Authentication'),
     list_to_tuple( records:record_info( fields,  Msg) ).
 
+%%%%%%%%%% ENCODE %%%%%%%%%%
 
-newResponse( Bool ) ->
-    
+%return Bin
+encode_Reply( Bool ) ->
     protos:encode_msg( #'ServerResponse'{ response = Bool } ).
+
+%return Bin
+encode_Reply( Bool, Message ) ->
+    protos:encode_msg( #'ServerResponse'{ response = Bool, error = Message } ).
+
+%return Bin
+encode_MsgExchange( investor, MsgInvestor) ->
+     Msg = #'MsgExchange'{ type = 'INVESTOR', investor = MsgInvestor },
+     protos:encode_msg( Msg);
+
+encode_MsgExchange( company, MsgCompany) ->
+     Msg = #'MsgExchange'{ type = 'COMPANY', company = MsgCompany },
+     protos:encode_msg( Msg).
+
+    
+    

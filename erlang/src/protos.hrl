@@ -45,6 +45,15 @@
         }).
 -endif.
 
+-ifndef('MSGEXCHANGE_PB_H').
+-define('MSGEXCHANGE_PB_H', true).
+-record('MsgExchange',
+        {type                   :: 'COMPANY' | 'INVESTOR' | integer(), % = 1, enum MsgExchange.Type
+         company                :: protos:'MsgCompany'() | undefined, % = 2
+         investor               :: protos:'MsgInvestor'() | undefined % = 3
+        }).
+-endif.
+
 -ifndef('NOTIFICATION_PB_H').
 -define('NOTIFICATION_PB_H', true).
 -record('Notification',

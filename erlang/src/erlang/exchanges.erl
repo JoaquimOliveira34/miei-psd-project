@@ -18,10 +18,12 @@ room( Exchanges ) ->
 
   receive
 
-    { send, Company, Data, From } ->
+    { send, Company, Bin, From } ->
     
         Pid = getExchange( Exchanges, Company),
-        Pid ! {data, Data, From},
+  
+        Pid ! {send, Bin , From},
+
         room( Exchanges )
 
     end.
@@ -31,16 +33,18 @@ room( Exchanges ) ->
 exchange( ReqSocket ) ->
 
     receive
-        {send, Data, From } ->
+        {send, Bin, From } ->
             
-            ok = erlzmq:send( ReqSocket, Data),
+            ok = erlzmq:send( ReqSocket, Bin),
+            
             Reply = erlzmq:recv( ReqSocket ),
+            
             From ! { reply, Reply }
     end.
 
 
 
-%% Auxiliary functions
+
 
 createExchanges( Pids, Context ) -> createExchanges( Pids, Context, []).
 
@@ -56,7 +60,7 @@ createExchanges( [ Port | Tail ], Context, Pids ) ->
 
     createExchanges( Tail , [ Pid | Pids] ).
 
-
+%% return Pid 
 getExchange( List , Company ) ->
 
     Size = lists:size( List),
@@ -65,7 +69,6 @@ getExchange( List , Company ) ->
   
     lists:nth( Index, List ).
 
-
-send( company , Data ) -> true;
-
-send( client , Data ) -> false.
+%% Return void
+send( Bin, Company ) -> 
+    room ! { Company, Bin, self() }.

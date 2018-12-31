@@ -6,48 +6,56 @@
 
 init()->
 
-    Pid = spawn( fun() -> accounts( #{ "quim"  => {"pass", investor },
-                                       "pedro" => {"pass", company} }
-                                  ) end),
+    % devo perguntar ao diretorio quais sao as contas existentes
+    
+    Pid = spawn( fun() -> accounts( #{ "quim"  => { 1, "pass", investor },
+                                       "pedro" => { 2, "pass", company}
+                                    }, 3) end),
     register( accounts , Pid).
 
 
-%Users = #{ quim => {pass, investor}, pedro => {pass2,investor} , ...}
-accounts( Map )->
+%Users = #{ quim => {id, pass, investor}, pedro => {id, pass2,investor} , ...}
+accounts( Map, NextId)->
 
     receive
         { verify , Username, Passwd, Pid } ->
+
             case maps:find( Username, Map) of
-                {ok, {Passwd, Type} } ->
-                    Pid ! {ok, Type} ;
+                {ok, { Id, Passwd, Type} } ->
+                    Pid ! {ok, Id, Type} ;
                 _ ->
                     Pid ! error
+                
             end;
 
         { create, Username, Passwd, Type, Pid} ->
-            case  maps:is_key(Username, Map) of
+            
+            case maps:is_key(Username, Map) of
                 true ->
                     Pid ! error;
                 false ->
                     Pid ! ok,
-                    Map = (maps:put( Username ,{Passwd, Type} , Map))
+                    Map = (maps:put( Username ,{ NextId, Passwd, Type} , Map) ),
                     % enviar informaçao para o diretorio!!!
+                    accounts(Map, NextId + 1)
             end
     end,
-    accounts(Map).
+    accounts(Map, NextId).
 
 
-
-
-
+% return  ok || error 
 create_account( Username, Passwd, Type) ->
-  accounts ! {create, Username, Passwd, Type, self()},
-  receive
-    V -> V
-  end.
+    accounts ! {create, Username, Passwd, Type, self()},
+   
+    receive
+        V -> V
+    end.
 
+
+% return  {ok, Id, Type} || error 
 verify( Username, Passwd) ->
-  accounts ! {verify, Username, Passwd, self()},
-  receive
-    V -> V
-  end.
+    accounts ! {verify, Username, Passwd, self()},
+    
+    receive
+        V -> V
+    end.
