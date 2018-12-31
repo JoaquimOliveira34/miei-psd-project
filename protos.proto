@@ -49,6 +49,17 @@ message MsgInvestor{
 
 }
 
+message MsgExchange {
+    required Type type = 1;
+    optional MsgCompany company = 2;
+    optional MsgInvestor investor = 3;
+
+    enum Type {
+        COMPANY = 0;
+        INVESTOR = 1;
+    }
+}
+
 message Notification{
 
     required int32 company = 1;
