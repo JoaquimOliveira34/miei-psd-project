@@ -3,6 +3,9 @@ package Exchanges;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 interface ExchangeController {
     void auctionCreated ( Auction auction );
@@ -11,19 +14,61 @@ interface ExchangeController {
 
     void emissionCreated ( Emission emission );
 
-    void emissionClosed ( int company, List<EmissionSubscription> subscriptions );
+    void emissionClosed ( int company, List< EmissionSubscription > subscriptions );
+
+    void scheduleClose ( int company );
+}
+
+class ExchangeCloseRunnable implements Runnable {
+    private       int                company;
+    private final ExchangeController controller;
+
+    public ExchangeCloseRunnable ( ExchangeController controller, int company ) {
+        this.company = company;
+        this.controller = controller;
+    }
+
+    @Override
+    public void run () {
+        if ( this.controller != null ) {
+            synchronized ( this.controller ) {
+                this.controller.scheduleClose( this.company );
+            }
+        }
+    }
 }
 
 public class Exchange {
     private Map< Integer, Auction >  auctions;
     private Map< Integer, Emission > emissions;
     private DirectoryClient          directory;
+    private ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor( 1 );
+
+    private long durationTime = 15;
+    private TimeUnit durationUnits = TimeUnit.SECONDS;
 
     private ExchangeController controller;
 
     public void setController ( ExchangeController controller ) {
         this.controller = controller;
     }
+
+    public long getDurationTime () {
+        return this.durationTime;
+    }
+
+    public void setDurationTime ( long durationTime ) {
+        this.durationTime = durationTime;
+    }
+
+    public TimeUnit getDurationUnits () {
+        return durationUnits;
+    }
+
+    public void setDurationUnits ( TimeUnit durationUnits ) {
+        this.durationUnits = durationUnits;
+    }
+
 
     public boolean hasAuctionFor ( int company ) {
         return this.auctions.containsKey( company );
@@ -50,10 +95,15 @@ public class Exchange {
             throw new ExchangeException( ExchangeExceptionType.DirectoryError );
         }
 
+
+        this.scheduler.schedule( new ExchangeCloseRunnable( this.controller, company ), this.durationTime, this.durationUnits );
+
         this.auctions.put( company, auction );
 
         if ( this.controller != null ) {
-            this.controller.auctionCreated( auction );
+            synchronized ( this.controller ) {
+                this.controller.auctionCreated( auction );
+            }
         }
     }
 
@@ -80,8 +130,11 @@ public class Exchange {
 
         this.auctions.remove( company );
 
+
         if ( this.controller != null ) {
-            this.controller.auctionClosed( company, accepted );
+            synchronized ( this.controller ) {
+                this.controller.auctionClosed( company, accepted );
+            }
         }
     }
 
@@ -105,7 +158,7 @@ public class Exchange {
         Auction auction = this.directory.getLastAuction( company );
 
         if ( auction != null ) {
-            List<AuctionBidding> biddings = this.directory.getAuctionBiddings( auction.getId() );
+            List< AuctionBidding > biddings = this.directory.getAuctionBiddings( auction.getId() );
 
             if ( biddings != null ) {
                 return biddings
@@ -153,10 +206,14 @@ public class Exchange {
             throw new ExchangeException( ExchangeExceptionType.DirectoryError );
         }
 
+        this.scheduler.schedule( new ExchangeCloseRunnable( this.controller, company ), this.durationTime, this.durationUnits );
+
         this.emissions.put( company, emission );
 
         if ( this.controller != null ) {
-            this.controller.emissionCreated( emission );
+            synchronized ( this.controller ) {
+                this.controller.emissionCreated( emission );
+            }
         }
     }
 
@@ -184,7 +241,9 @@ public class Exchange {
         this.emissions.remove( company );
 
         if ( this.controller != null ) {
-            this.controller.emissionClosed( company, subscribed );
+            synchronized ( this.controller ) {
+                this.controller.emissionClosed( company, subscribed );
+            }
         }
     }
 }
