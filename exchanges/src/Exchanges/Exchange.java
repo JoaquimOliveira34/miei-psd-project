@@ -137,6 +137,10 @@ public class Exchange {
 
         double maxInterestRate = this.getEmissionInterestRate( company );
 
+        if ( maxInterestRate < 0 ) {
+            throw new ExchangeException( ExchangeExceptionType.InvalidInterestRate );
+        }
+
         Emission emission = new Emission( company, amount, maxInterestRate );
 
         try {
@@ -156,11 +160,31 @@ public class Exchange {
         }
     }
 
-    public void subscribeEmission ( int company, int investor, int amount ) {
-        // TODO
+    public void subscribeEmission ( int company, int investor, int amount ) throws ExchangeException {
+        if ( !this.hasEmissionFor( company ) ) {
+            throw new ExchangeException( ExchangeExceptionType.InvalidCompany );
+        }
+
+        Emission emission = this.emissions.get( company );
+
+        emission.subscribe( investor, amount );
     }
 
-    public void closeEmission ( int company ) {
-        // TODO
+    public void closeEmission ( int company ) throws ExchangeException {
+        if ( !this.hasEmissionFor( company ) ) {
+            throw new ExchangeException( ExchangeExceptionType.InvalidCompany );
+        }
+
+        Emission emission = this.emissions.get( company );
+
+        List< EmissionSubscription > subscribed = emission.close();
+
+        this.directory.closeEmission( emission, subscribed );
+
+        this.emissions.remove( company );
+
+        if ( this.controller != null ) {
+            this.controller.emissionClosed( company, subscribed );
+        }
     }
 }

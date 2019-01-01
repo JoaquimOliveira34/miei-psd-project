@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 class EmissionSubscription {
@@ -86,6 +88,10 @@ public class Emission {
         }
 
         this.subscriptions.put( subscription.getInvestor(), subscription );
+    }
+
+    public List< EmissionSubscription > close () {
+        return new ArrayList<>( this.subscriptions.values() );
     }
 
     public static Emission fromJSON ( String json ) throws IOException {

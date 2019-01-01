@@ -200,6 +200,10 @@ public class DirectoryClient {
         return this.createEmission( emission.getCompany(), emission.getAmount(), emission.getInterestRate() );
     }
 
+    public void closeEmission ( Emission emission, List<EmissionSubscription> subscribed ) {
+        // TODO
+    }
+
     public Emission getLastEmission ( int company ) {
         // TODO
         return null;
