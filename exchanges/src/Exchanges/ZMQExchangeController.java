@@ -32,7 +32,11 @@ public class ZMQExchangeController implements ExchangeController {
         // an auction or emission should be closed
         this.schedulerSocketPush = context.socket( ZMQ.PUSH );
 
+
         this.replyPort = replyPort;
+
+        this.publisherPort = publisherPort;
+
 
         this.replySocket.bind( "tcp://*:" + Integer.toString( replyPort ) );
 
@@ -128,6 +132,8 @@ public class ZMQExchangeController implements ExchangeController {
 
         poller.register( this.replySocket, ZMQ.Poller.POLLIN );
         poller.register( this.schedulerSocket, ZMQ.Poller.POLLIN );
+
+        System.out.printf( ">> Exchange listening on port %d (notifications on port %d)\n", this.replyPort, this.publisherPort );
 
         while ( true ) {
             poller.poll();
