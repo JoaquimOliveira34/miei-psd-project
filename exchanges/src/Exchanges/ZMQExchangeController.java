@@ -46,24 +46,36 @@ public class ZMQExchangeController implements ExchangeController {
         this.exchange = new Exchange( directory, this );
     }
 
+    private void publish ( int company, String message ) {
+        this.publisher.send( Protos.Notification.newBuilder().setCompany( company ).setMessage( message ).build().toByteArray() );
+    }
+
+    private void publish ( int company, String format, Object ... args ) {
+        this.publish( company, String.format( format, args ) );
+    }
+
     @Override
     public void auctionCreated ( Auction auction ) {
-        // TODO
+        this.publish( auction.getCompany(), "Auction created with ammount %d and max interest rate %d.", auction.getAmount(), auction.getMaxInterestRate() );
     }
 
     @Override
     public void auctionClosed ( int company, List< AuctionBidding > biddings ) {
-        // TODO
+        if ( biddings != null && biddings.size() > 0 ) {
+            this.publish( company, "Auction closed with enough biddings." );
+        } else {
+            this.publish( company, "Auction closed without enough biddings." );
+        }
     }
 
     @Override
     public void emissionCreated ( Emission emission ) {
-        // TODO
+        this.publish( emission.getCompany(), "Emission created with ammount %d and fixed interest rate %d.", emission.getAmount(), emission.getInterestRate() );
     }
 
     @Override
     public void emissionClosed ( int company, List< EmissionSubscription > subscriptions ) {
-        // TODO
+        this.publish( company, "Emission closed with %d collected.", subscriptions.stream().mapToInt( EmissionSubscription::getAmount ).sum() );
     }
 
     @Override
