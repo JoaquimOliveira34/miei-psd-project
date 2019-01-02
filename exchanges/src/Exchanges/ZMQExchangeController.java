@@ -16,7 +16,7 @@ public class ZMQExchangeController implements ExchangeController {
     private int         replyPort;
     private int         publisherPort;
 
-    public ZMQExchangeController ( int replyPort, int publisherPort ) {
+    public ZMQExchangeController ( int replyPort, int publisherPort, DirectoryClient directory ) {
         this.context = ZMQ.context( 1 );
 
         // Socket that receives requests from the erlang frontend and sends replies
@@ -43,9 +43,7 @@ public class ZMQExchangeController implements ExchangeController {
         this.publisher.bind( "tcp://*:" + Integer.toString( publisherPort ) );
 
 
-        this.exchange = new Exchange();
-
-        this.exchange.setController( this );
+        this.exchange = new Exchange( directory, this );
     }
 
     @Override

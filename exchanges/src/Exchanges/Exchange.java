@@ -1,6 +1,7 @@
 package Exchanges;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -39,15 +40,35 @@ class ExchangeCloseRunnable implements Runnable {
 }
 
 public class Exchange {
-    private Map< Integer, Auction >  auctions;
-    private Map< Integer, Emission > emissions;
-    private DirectoryClient          directory;
+    // The history HashMap stores the last event (either auction or emission) for each company
+    private Map< Integer, Either< Auction, Emission > > history   = new HashMap<>();
+    // The auctions HashMap contains the current (if any) auction for each company
+    private Map< Integer, Auction >                     auctions  = new HashMap<>();
+    // The emissions HashMap contains the current (if any) emission for each company
+    private Map< Integer, Emission >                    emissions = new HashMap<>();
+    // Each company can only have either an emission or an auction running at a time; not both
+
+    private DirectoryClient directory;
+
+    // Class used to schedule the closure of emissions and auctions automatically
+    // The scheduled task runs on a separate thread and interacts in a synchronized manner
+    // With the controller, notifying it to close the event
     private ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor( 1 );
 
-    private long durationTime = 15;
+    private long     durationTime  = 15;
     private TimeUnit durationUnits = TimeUnit.SECONDS;
 
     private ExchangeController controller;
+
+    public Exchange ( DirectoryClient directory ) {
+        this.directory = directory;
+    }
+
+    public Exchange ( DirectoryClient directory, ExchangeController controller ) {
+        this( directory );
+
+        this.setController( controller );
+    }
 
     public void setController ( ExchangeController controller ) {
         this.controller = controller;
@@ -98,6 +119,8 @@ public class Exchange {
 
         this.scheduler.schedule( new ExchangeCloseRunnable( this.controller, company ), this.durationTime, this.durationUnits );
 
+        this.history.put( company, Either.left( auction ) );
+
         this.auctions.put( company, auction );
 
         if ( this.controller != null ) {
@@ -145,20 +168,14 @@ public class Exchange {
      * @return
      */
     public double getEmissionInterestRate ( int company ) {
-        Emission emission = this.directory.getLastEmission( company );
+        Either<Auction, Emission> history = this.history.get( company );
 
-        if ( emission != null ) {
-            if ( emission.isCompleted() ) {
-                return emission.getInterestRate();
-            } else {
-                return emission.getInterestRate() * 1.1;
-            }
+        if ( history == null ) {
+            return -1;
         }
 
-        Auction auction = this.directory.getLastAuction( company );
-
-        if ( auction != null ) {
-            List< AuctionBidding > biddings = this.directory.getAuctionBiddings( auction.getId() );
+        if ( history.isLeft() ) {
+            List< AuctionBidding > biddings = history.getLeft().getAcceptedBiddings();
 
             if ( biddings != null ) {
                 return biddings
@@ -169,11 +186,18 @@ public class Exchange {
             } else {
                 return -1;
             }
+        } else if ( history.isRight() ) {
+            Emission emission = history.getRight();
+
+            if ( emission.isCompleted() ) {
+                return emission.getInterestRate();
+            } else {
+                return emission.getInterestRate() * 1.1;
+            }
+        } else {
+            return -1;
         }
-
-        return -1;
     }
-
 
     public boolean hasEmissionFor ( int company ) {
         return this.emissions.containsKey( company );
@@ -207,6 +231,8 @@ public class Exchange {
         }
 
         this.scheduler.schedule( new ExchangeCloseRunnable( this.controller, company ), this.durationTime, this.durationUnits );
+
+        this.history.put( company, Either.right( emission ) );
 
         this.emissions.put( company, emission );
 
@@ -245,5 +271,45 @@ public class Exchange {
                 this.controller.emissionClosed( company, subscribed );
             }
         }
+    }
+}
+
+
+class Either < L, R > {
+    private L left;
+    private R right;
+
+    // false is left
+    // true is right
+    private boolean side = false;
+
+    public static < L, R > Either< L, R > left ( L value ) {
+        return new Either<>( value, null, false );
+    }
+
+    public static < L, R > Either< L, R > right ( R value ) {
+        return new Either<>( null, value, true );
+    }
+
+    private Either ( L left, R right, boolean side ) {
+        this.left = left;
+        this.right = right;
+        this.side = side;
+    }
+
+    public boolean isLeft () {
+        return !this.side;
+    }
+
+    public boolean isRight () {
+        return this.side;
+    }
+
+    public L getLeft () {
+        return this.left;
+    }
+
+    public R getRight () {
+        return this.right;
     }
 }

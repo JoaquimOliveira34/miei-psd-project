@@ -1,6 +1,7 @@
 package Exchanges;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -34,6 +35,8 @@ public class Emission {
     private double interestRate;
     private Map< Integer, EmissionSubscription > subscriptions = new HashMap<>();
     private boolean completed;
+
+    private Emission () {}
 
     public Emission ( int id, int company, int amount, double interestRate ) {
         this.id = id;
@@ -104,5 +107,11 @@ public class Emission {
         ObjectMapper mapper = new ObjectMapper();
 
         return mapper.writeValueAsString( this );
+    }
+
+    public static List<Emission> listFromJSON ( String json ) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+
+        return mapper.readValue( json, new TypeReference<List<Emission>>(){} );
     }
 }
