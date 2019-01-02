@@ -9,17 +9,18 @@ import java.util.List;
 public class ZMQExchangeController implements ExchangeController {
     private Exchange    exchange;
     private ZMQ.Context context;
-    private ZMQ.Socket  socket;
+    private ZMQ.Socket  replySocket;
     private ZMQ.Socket  publisher;
     private ZMQ.Socket  schedulerSocket;
     private ZMQ.Socket  schedulerSocketPush;
-    private int         port;
+    private int         replyPort;
+    private int         publisherPort;
 
-    public ZMQExchangeController ( int port ) {
+    public ZMQExchangeController ( int replyPort, int publisherPort ) {
         this.context = ZMQ.context( 1 );
 
         // Socket that receives requests from the erlang frontend and sends replies
-        this.socket = context.socket( ZMQ.REP );
+        this.replySocket = context.socket( ZMQ.REP );
 
         // Socket responsible for publishing notifications
         this.publisher = context.socket( ZMQ.PUB );
@@ -31,13 +32,16 @@ public class ZMQExchangeController implements ExchangeController {
         // an auction or emission should be closed
         this.schedulerSocketPush = context.socket( ZMQ.PUSH );
 
-        this.port = port;
+        this.replyPort = replyPort;
 
-        this.socket.bind( "tcp://*:" + Integer.toString( port ) );
+        this.replySocket.bind( "tcp://*:" + Integer.toString( replyPort ) );
 
         this.schedulerSocket.bind( "inproc://scheduler" );
 
         this.schedulerSocketPush.connect( "inproc://scheduler" );
+
+        this.publisher.bind( "tcp://*:" + Integer.toString( publisherPort ) );
+
 
         this.exchange = new Exchange();
 
@@ -94,11 +98,11 @@ public class ZMQExchangeController implements ExchangeController {
     }
 
     public void sendSuccess () {
-        this.socket.send( Protos.ServerResponse.newBuilder().setResponse( true ).build().toByteArray() );
+        this.replySocket.send( Protos.ServerResponse.newBuilder().setResponse( true ).build().toByteArray() );
     }
 
     public void sendError ( String error ) {
-        socket.send(
+        replySocket.send(
                 Protos.ServerResponse.newBuilder()
                         .setResponse( false )
                         .setError( error )
@@ -112,14 +116,14 @@ public class ZMQExchangeController implements ExchangeController {
         // The second one notifies us when an auction/emission is ready to be closed
         ZMQ.Poller poller = this.context.poller( 1 );
 
-        poller.register( this.socket, ZMQ.Poller.POLLIN );
+        poller.register( this.replySocket, ZMQ.Poller.POLLIN );
         poller.register( this.schedulerSocket, ZMQ.Poller.POLLIN );
 
         while ( true ) {
             poller.poll();
 
             if ( poller.pollin( 0 ) ) {
-                byte[] bytes = socket.recv( ZMQ.DONTWAIT );
+                byte[] bytes = replySocket.recv( ZMQ.DONTWAIT );
 
                 try {
                     Protos.MsgExchange message = Protos.MsgExchange.parseFrom( bytes );
@@ -146,7 +150,7 @@ public class ZMQExchangeController implements ExchangeController {
             // We check if the 1-indexed socket (schedulerSocket) has any incoming messages
             // If so, we read the company id and close the auction
             if ( poller.pollin( 1 ) ) {
-                byte[] bytes = socket.recv( ZMQ.DONTWAIT );
+                byte[] bytes = replySocket.recv( ZMQ.DONTWAIT );
 
                 int company = byteArrayToInt( bytes );
 
