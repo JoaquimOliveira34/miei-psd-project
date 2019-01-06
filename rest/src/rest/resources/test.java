@@ -230,6 +230,8 @@ public class test {
         Iterator i= names.iterator();
         int company= Integer.parseInt((String) i.next());
         int amount= Integer.parseInt((String) i.next());
+        double maxInterestRate = Double.parseDouble((String) i.next());
+        this.auctions.put(Id, new Auction(company,amount,maxInterestRate));
         return Response.ok(Id).build();
     }
 }
