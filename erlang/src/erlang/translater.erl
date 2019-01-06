@@ -37,7 +37,11 @@ decode_MsgCompany( Bin ) ->
 %return {Type, User, Name, Pass} 
 decode_Authentication( Bin ) ->
     Msg = protos:decode_msg( Bin, 'Authentication'),
-    list_to_tuple( records:record_info( fields,  Msg) ).
+    {   Msg#'Authentication'.credentialsType, 
+        Msg#'Authentication'.userType, 
+        Msg#'Authentication'.username, 
+        Msg#'Authentication'.password
+    }.
 
 %%%%%%%%%% ENCODE %%%%%%%%%%
 

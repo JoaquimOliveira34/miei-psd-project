@@ -32,3 +32,5 @@ remove:
 	rm -f target/*.beam
 	rm -f *.beam
 	
+run: compile
+	cd ./target && erl < run.boot

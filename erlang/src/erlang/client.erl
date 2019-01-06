@@ -20,17 +20,17 @@ init( Context ) ->
 %% Map  Addres => Client (pid)
 receiver( XrepSocket, Map ) ->
     
-    {Addr, Body} = receiveMessage( XrepSocket ),
+    {Addr, Bottom, Body} = receiveMessage( XrepSocket ),
 
-    case maps:get( Addr, Map, error ) of
+    case maps:get( Addr, Map, none ) of
 
-        error ->    
+        none ->    
             Pid = spawn( fun() -> client( XrepSocket, Addr ) end ),
-            Pid ! {msg, Body},
+            Pid ! {msg, Bottom, Body},
             receiver( XrepSocket, maps:put( Addr, Pid, Map) );        
         
         Pid ->
-            Pid ! {msg, Body},
+            Pid ! {msg, Bottom, Body},
             receiver( XrepSocket, Map)
     
     end.
@@ -39,20 +39,20 @@ receiver( XrepSocket, Map ) ->
 %% Client to do Authentication process
 client( XrepSocket, MyAddr ) -> 
     receive 
-        {msg, Bin} ->
+        {msg, Bottom, Bin} ->
             
-            case  makeLogin( translater:getAuthenticationData( Bin ) ) of 
+            case  makeLogin( translater:decode_Authentication( Bin ) ) of 
                 
                 ok -> 
-                    sendMessage( XrepSocket, MyAddr, translater:newResponse(true) ),
+                    sendMessage( XrepSocket, MyAddr,Bottom, translater:encode_Reply(true) ),
                     client( XrepSocket, MyAddr);
                 
                 error -> 
-                    sendMessage( XrepSocket, MyAddr, translater:newResponse(false) ),
+                    sendMessage( XrepSocket, MyAddr,Bottom, translater:encode_Reply(false) ),
                     client( XrepSocket, MyAddr);
                 
                 {ok, Id, Type} ->
-                    sendMessage( XrepSocket, MyAddr, translater:newResponse(true) ),
+                    sendMessage( XrepSocket, MyAddr,Bottom, translater:encode_Reply(true, Type) ),
                     client( XrepSocket, MyAddr, Id, Type)
             end
     end.
@@ -61,14 +61,14 @@ client( XrepSocket, MyAddr ) ->
 %% Authenticated client to do send messages to exchanges 
 client( XrepSocket, MyAddr, MyId, company ) ->
     receive 
-        { msg, Bin} ->
+        { msg,Bottom, Bin} ->
             Msg = translater:decode_MsgCompany( Bin ),
             Msg2 = translater:setIdMsgCompany( Msg, MyId),
             Bin2= translater:encode_MsgExchange( company, Msg2),
-            exchanges:send( Bin2, MyId );
+            exchanges:send( Bin2,Bottom, MyId );
             
-        {reply, Bin} -> 
-            sendMessage( XrepSocket, MyAddr, Bin)
+        {reply, Bottom, Bin} -> 
+            sendMessage( XrepSocket, MyAddr, Bottom, Bin)
     end,
     client( XrepSocket, MyAddr, MyId, company);
 
@@ -81,8 +81,8 @@ client( XrepSocket, MyAddr, MyId, investor ) ->
             Bin2= translater:encode_MsgExchange( investor, Msg2),
             exchanges:send( Bin2, CompanyId );
 
-        {reply, Bin} -> 
-            sendMessage( XrepSocket, MyAddr, Bin)
+        {reply, Bottom, Bin} -> 
+            sendMessage( XrepSocket, MyAddr,Bottom, Bin)
     end,
     client( XrepSocket, MyAddr, MyId, investor).
 
@@ -90,24 +90,25 @@ client( XrepSocket, MyAddr, MyId, investor ) ->
 makeLogin( {Type, User, Name, Pass} ) ->
 
     case Type of    
-        register ->
+
+        'REGISTER' ->
             accounts:create_account( Name, Pass, User);
-        login ->
+        'LOGIN' ->
             accounts:verify( Name, Pass)
     end.
             
 
 %% return ok                  
-sendMessage(Socket, Addr, Bin  ) ->
+sendMessage(Socket, Addr, Bottom, Bin  ) ->
     ok = erlzmq:send( Socket, Addr, [sndmore]),
+    ok = erlzmq:send( Socket, Bottom, [sndmore]),
     ok = erlzmq:send( Socket, Bin).
 
 %% return { Addr, Body}
 receiveMessage( Socket ) ->
      
     {ok, Addr} = erlzmq:recv( Socket ),
-
+    {ok, Bottom} = erlzmq:recv( Socket ),
     {ok, Body} = erlzmq:recv( Socket ),
-
-    { Addr, Body}.
+    { Addr, Bottom, Body}.
 

@@ -19,7 +19,6 @@ accounts( Map, NextId)->
 
     receive
         { verify , Username, Passwd, Pid } ->
-
             case maps:find( Username, Map) of
                 {ok, { Id, Passwd, Type} } ->
                     Pid ! {ok, Id, Type} ;
@@ -54,8 +53,10 @@ create_account( Username, Passwd, Type) ->
 
 % return  {ok, Id, Type} || error 
 verify( Username, Passwd) ->
-    accounts ! {verify, Username, Passwd, self()},
+
+    accounts ! { verify, Username, Passwd, self() },
     
     receive
-        V -> V
+        {ok, Id, Type} -> {ok, Id, Type };
+        error -> error 
     end.

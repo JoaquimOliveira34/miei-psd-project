@@ -18,11 +18,11 @@ room( Exchanges ) ->
 
   receive
 
-    { send, Company, Bin, From } ->
+    { send, Company,Bottom, Bin, From } ->
     
         Pid = getExchange( Exchanges, Company),
   
-        Pid ! {send, Bin , From},
+        Pid ! {send, Bottom, Bin , From},
 
         room( Exchanges )
 
@@ -33,13 +33,13 @@ room( Exchanges ) ->
 exchange( ReqSocket ) ->
 
     receive
-        {send, Bin, From } ->
+        {send, Bottom, Bin, From } ->
             
             ok = erlzmq:send( ReqSocket, Bin),
             
             Reply = erlzmq:recv( ReqSocket ),
             
-            From ! { reply, Reply }
+            From ! { reply,Bottom, Reply }
     end.
 
 
@@ -70,5 +70,5 @@ getExchange( List , Company ) ->
     lists:nth( Index, List ).
 
 %% Return void
-send( Bin, Company ) -> 
+send( Bottom, Bin, Company ) -> 
     room ! { Company, Bin, self() }.

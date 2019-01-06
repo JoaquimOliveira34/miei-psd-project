@@ -9,7 +9,7 @@
 main() ->
 
     {ok, Context} = erlzmq:context(),
+    accounts:init(),
     client:init( Context ),
     exchanges:init( ["11101","11102"], Context),
-    accounts:init(),
     ok.   
