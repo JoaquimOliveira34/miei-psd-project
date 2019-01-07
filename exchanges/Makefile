@@ -27,5 +27,5 @@ ARGS ?= 12345 12346 localhost 12347
 
 # USAGE
 # make run ARGS="12345 12346 localhost 12347"
-run: compile
+run:
 	java -cp "./bin/:$(LIBS)" Exchanges.Main $(ARGS)
