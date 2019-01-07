@@ -9,38 +9,82 @@ import java.util.List;
 public class ZMQExchangeController implements ExchangeController {
     private Exchange    exchange;
     private ZMQ.Context context;
-    private ZMQ.Socket  socket;
+    private ZMQ.Socket  replySocket;
     private ZMQ.Socket  publisher;
-    private int         port;
+    private ZMQ.Socket  schedulerSocket;
+    private ZMQ.Socket  schedulerSocketPush;
+    private int         replyPort;
+    private int         publisherPort;
 
-    public ZMQExchangeController ( int port ) {
-        this.exchange = new Exchange();
+    public ZMQExchangeController ( int replyPort, int publisherPort, DirectoryClient directory ) {
         this.context = ZMQ.context( 1 );
-        this.socket = context.socket( ZMQ.REP );
-        this.publisher = context.socket( ZMQ.PUB );
-        this.port = port;
 
-        this.exchange.setController( this );
+        // Socket that receives requests from the erlang frontend and sends replies
+        this.replySocket = context.socket( ZMQ.REP );
+
+        // Socket responsible for publishing notifications
+        this.publisher = context.socket( ZMQ.PUB );
+
+        // Socket that receives timeout notifications to close auctions/emissions
+        this.schedulerSocket = context.socket( ZMQ.PULL );
+
+        // Socket that notifies the exchange controller's event loop when
+        // an auction or emission should be closed
+        this.schedulerSocketPush = context.socket( ZMQ.PUSH );
+
+
+        this.replyPort = replyPort;
+
+        this.publisherPort = publisherPort;
+
+
+        this.replySocket.bind( "tcp://*:" + Integer.toString( replyPort ) );
+
+        this.schedulerSocket.bind( "inproc://scheduler" );
+
+        this.schedulerSocketPush.connect( "inproc://scheduler" );
+
+        this.publisher.bind( "tcp://*:" + Integer.toString( publisherPort ) );
+
+
+        this.exchange = new Exchange( directory, this );
+    }
+
+    private void publish ( int company, String message ) {
+        this.publisher.send( Protos.Notification.newBuilder().setCompany( company ).setMessage( message ).build().toByteArray() );
+    }
+
+    private void publish ( int company, String format, Object ... args ) {
+        this.publish( company, String.format( format, args ) );
     }
 
     @Override
     public void auctionCreated ( Auction auction ) {
-        // TODO
+        this.publish( auction.getCompany(), "Auction created with ammount %d and max interest rate %d.", auction.getAmount(), auction.getMaxInterestRate() );
     }
 
     @Override
     public void auctionClosed ( int company, List< AuctionBidding > biddings ) {
-        // TODO
+        if ( biddings != null && biddings.size() > 0 ) {
+            this.publish( company, "Auction closed with enough biddings." );
+        } else {
+            this.publish( company, "Auction closed without enough biddings." );
+        }
     }
 
     @Override
     public void emissionCreated ( Emission emission ) {
-        // TODO
+        this.publish( emission.getCompany(), "Emission created with ammount %d and fixed interest rate %d.", emission.getAmount(), emission.getInterestRate() );
     }
 
     @Override
     public void emissionClosed ( int company, List< EmissionSubscription > subscriptions ) {
-        // TODO
+        this.publish( company, "Emission closed with %d collected.", subscriptions.stream().mapToInt( EmissionSubscription::getAmount ).sum() );
+    }
+
+    @Override
+    public void scheduleClose ( int company ) {
+        this.schedulerSocketPush.send( intToByteArray( company ) );
     }
 
     public void onCompanyMessage ( Protos.MsgCompany message ) throws ExchangeException {
@@ -68,11 +112,11 @@ public class ZMQExchangeController implements ExchangeController {
     }
 
     public void sendSuccess () {
-        this.socket.send( Protos.ServerResponse.newBuilder().setResponse( true ).build().toByteArray() );
+        this.replySocket.send( Protos.ServerResponse.newBuilder().setResponse( true ).build().toByteArray() );
     }
 
     public void sendError ( String error ) {
-        socket.send(
+        replySocket.send(
                 Protos.ServerResponse.newBuilder()
                         .setResponse( false )
                         .setError( error )
@@ -81,31 +125,80 @@ public class ZMQExchangeController implements ExchangeController {
     }
 
     public void run () {
-        this.socket.bind( "tcp://*:" + Integer.toString( port ) );
+        // Here we create a poller that allows us to listen to more than one socket at a time
+        // The first socket receives messages from the erlang frontend
+        // The second one notifies us when an auction/emission is ready to be closed
+        ZMQ.Poller poller = this.context.poller( 1 );
+
+        poller.register( this.replySocket, ZMQ.Poller.POLLIN );
+        poller.register( this.schedulerSocket, ZMQ.Poller.POLLIN );
+
+        System.out.printf( ">> Exchange listening on port %d (notifications on port %d)\n", this.replyPort, this.publisherPort );
 
         while ( true ) {
-            byte[] bytes = socket.recv();
+            poller.poll();
 
-            try {
-                Protos.MsgExchange message = Protos.MsgExchange.parseFrom( bytes );
+            if ( poller.pollin( 0 ) ) {
+                byte[] bytes = replySocket.recv( ZMQ.DONTWAIT );
 
-                // Can receive two types of messages from the same socket: decide which one it is and call the
-                // appropriate method
-                if ( message.getType() == Protos.MsgExchange.Type.COMPANY ) {
-                    this.onCompanyMessage( message.getCompany() );
-                } else if ( message.getType() == Protos.MsgExchange.Type.INVESTOR ) {
-                    this.onInvestorMessage( message.getInvestor() );
+                try {
+                    Protos.MsgExchange message = Protos.MsgExchange.parseFrom( bytes );
+
+                    // Can receive two types of messages from the same socket: decide which one it is and call the
+                    // appropriate method
+                    if ( message.getType() == Protos.MsgExchange.Type.COMPANY ) {
+                        this.onCompanyMessage( message.getCompany() );
+                    } else if ( message.getType() == Protos.MsgExchange.Type.INVESTOR ) {
+                        this.onInvestorMessage( message.getInvestor() );
+                    }
+
+                    this.sendSuccess();
+                } catch ( InvalidProtocolBufferException e ) {
+                    e.printStackTrace();
+
+                    // There was an error with the parsing of the message. Send a response to the socket saying so
+                    this.sendError( ExchangeExceptionType.InvalidMessage.toString() );
+                } catch ( ExchangeException e ) {
+                    this.sendError( e.getMessage() );
                 }
+            }
 
-                this.sendSuccess();
-            } catch ( InvalidProtocolBufferException e ) {
-                e.printStackTrace();
+            // We check if the 1-indexed socket (schedulerSocket) has any incoming messages
+            // If so, we read the company id and close the auction
+            if ( poller.pollin( 1 ) ) {
+                byte[] bytes = replySocket.recv( ZMQ.DONTWAIT );
 
-                // There was an error with the parsing of the message. Send a response to the socket saying so
-                this.sendError( ExchangeExceptionType.InvalidMessage.toString() );
-            } catch ( ExchangeException e ) {
-                this.sendError( e.getMessage() );
+                int company = byteArrayToInt( bytes );
+
+                try {
+                    if ( this.exchange.hasAuctionFor( company ) ) {
+                        this.exchange.closeAuction( company );
+                    } else if ( this.exchange.hasEmissionFor( company ) ) {
+                        this.exchange.closeEmission( company );
+                    }
+                } catch ( ExchangeException e ) {
+                    e.printStackTrace();
+                }
             }
         }
+    }
+
+
+    // Helper methods to convert from int to byte[] and vice-versa
+    // Taken from https://stackoverflow.com/questions/5399798/byte-array-and-int-conversion-in-java/5399829#5399829
+    public static int byteArrayToInt ( byte[] b ) {
+        return b[ 3 ] & 0xFF |
+               ( b[ 2 ] & 0xFF ) << 8 |
+               ( b[ 1 ] & 0xFF ) << 16 |
+               ( b[ 0 ] & 0xFF ) << 24;
+    }
+
+    public static byte[] intToByteArray ( int a ) {
+        return new byte[] {
+                ( byte ) ( ( a >> 24 ) & 0xFF ),
+                ( byte ) ( ( a >> 16 ) & 0xFF ),
+                ( byte ) ( ( a >> 8 ) & 0xFF ),
+                ( byte ) ( a & 0xFF )
+        };
     }
 }

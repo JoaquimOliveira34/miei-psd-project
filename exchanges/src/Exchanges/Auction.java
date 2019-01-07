@@ -1,6 +1,7 @@
 package Exchanges;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -44,6 +45,8 @@ public class Auction {
     private Map< Integer, AuctionBidding > biddings = new HashMap<>();
     private List< AuctionBidding >         accepted = null;
 
+    private Auction () {}
+
     public Auction ( int id, int company, int amount, double maxInterestRate ) {
         this.id = id;
         this.company = company;
@@ -73,6 +76,10 @@ public class Auction {
 
     public double getMaxInterestRate () {
         return maxInterestRate;
+    }
+
+    public List<AuctionBidding> getAcceptedBiddings () {
+        return this.accepted;
     }
 
     public void bid ( int investor, int amount, double interestRate ) throws ExchangeException {
@@ -136,5 +143,11 @@ public class Auction {
         ObjectMapper mapper = new ObjectMapper();
 
         return mapper.writeValueAsString( this );
+    }
+
+    public static List<Auction> listFromJSON ( String json ) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+
+        return mapper.readValue( json, new TypeReference<List<Auction>>(){} );
     }
 }

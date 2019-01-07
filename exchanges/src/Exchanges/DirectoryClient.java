@@ -200,18 +200,68 @@ public class DirectoryClient {
         return this.createEmission( emission.getCompany(), emission.getAmount(), emission.getInterestRate() );
     }
 
-    public Emission getLastEmission ( int company ) {
-        // TODO
-        return null;
+    public void closeEmission ( Emission emission, List<EmissionSubscription> subscribed ) {
+        String url = this.getResourceUrl( "emissao", Integer.toString( emission.getId() ) );
+
+        RequestBody requestBody = new JsonBuilder()
+                .add( "subscriptions", subscribed )
+                .build();
+
+        Request request = new Request.Builder()
+                .url( url )
+                .post( requestBody )
+                .build();
+
+        try {
+            client.newCall( request ).execute();
+        } catch ( IOException e ) {
+            e.printStackTrace();
+        }
     }
 
-    public Auction getLastAuction ( int company ) {
-        // TODO
-        return null;
-    }
-
-    public List<AuctionBidding> getAuctionBiddings ( int id ) {
-        // TODO
-        return null;
-    }
+    //
+    // TODO This was replaced by a local history. If needed, should be brought back with the needed functionality implemented in the directory
+    //
+//    public Emission getLastEmission ( int company ) throws IOException {
+//        // TODO In the directory documentation, it is only possible to retrieve a company by name, but here
+//        // we only have the id so far. Might need to be updated
+//        String url = this.getResourceUrl( "empresa", Integer.toString( company ), "emissoes" );
+//
+//        Request request = new Request.Builder()
+//                .url( url ).get().build();
+//
+//        try ( Response response = client.newCall( request ).execute() ) {
+//            List< Emission > emissions = Emission.listFromJSON( response.body().string() );
+//
+//            if ( emissions.size() == 0 ) {
+//                return null;
+//            }
+//
+//            return emissions.get( emissions.size() - 1 );
+//        }
+//    }
+//
+//    public Auction getLastAuction ( int company ) throws IOException {
+//        // TODO In the directory documentation, it is only possible to retrieve a company by name, but here
+//        // we only have the id so far. Might need to be updated
+//        String url = this.getResourceUrl( "empresa", Integer.toString( company ), "leiloes" );
+//
+//        Request request = new Request.Builder()
+//                .url( url ).get().build();
+//
+//        try ( Response response = client.newCall( request ).execute() ) {
+//            List< Auction > auctions = Auction.listFromJSON( response.body().string() );
+//
+//            if ( auctions.size() == 0 ) {
+//                return null;
+//            }
+//
+//            return auctions.get( auctions.size() - 1 );
+//        }
+//    }
+//
+//    public List<AuctionBidding> getAuctionBiddings ( int id ) {
+//        // TODO
+//        return null;
+//    }
 }

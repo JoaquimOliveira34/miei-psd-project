@@ -1,10 +1,13 @@
 package Exchanges;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 class EmissionSubscription {
@@ -32,6 +35,8 @@ public class Emission {
     private double interestRate;
     private Map< Integer, EmissionSubscription > subscriptions = new HashMap<>();
     private boolean completed;
+
+    private Emission () {}
 
     public Emission ( int id, int company, int amount, double interestRate ) {
         this.id = id;
@@ -88,6 +93,10 @@ public class Emission {
         this.subscriptions.put( subscription.getInvestor(), subscription );
     }
 
+    public List< EmissionSubscription > close () {
+        return new ArrayList<>( this.subscriptions.values() );
+    }
+
     public static Emission fromJSON ( String json ) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
 
@@ -98,5 +107,11 @@ public class Emission {
         ObjectMapper mapper = new ObjectMapper();
 
         return mapper.writeValueAsString( this );
+    }
+
+    public static List<Emission> listFromJSON ( String json ) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+
+        return mapper.readValue( json, new TypeReference<List<Emission>>(){} );
     }
 }
