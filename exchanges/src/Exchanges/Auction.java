@@ -78,7 +78,11 @@ public class Auction {
         return maxInterestRate;
     }
 
-    public List<AuctionBidding> getAcceptedBiddings () {
+    public boolean isClosed () {
+        return this.closed;
+    }
+
+    public List<AuctionBidding> getAccepted () {
         return this.accepted;
     }
 
@@ -91,7 +95,7 @@ public class Auction {
             throw new ExchangeException( ExchangeExceptionType.DuplicateBidding );
         }
 
-        if ( bidding.getAmount() * 10 > this.amount || bidding.getAmount() <= 0 ) {
+        if ( bidding.getAmount() > this.amount * 10  || bidding.getAmount() <= 0 ) {
             throw new ExchangeException( ExchangeExceptionType.InvalidAmount );
         }
 
@@ -103,7 +107,7 @@ public class Auction {
     }
 
     public boolean isSuccess () {
-        return this.biddings.values().stream().mapToInt( bidding -> bidding.getAmount() * 10 ).sum() >= this.amount;
+        return this.biddings.values().stream().mapToInt( bidding -> bidding.getAmount() ).sum() >= this.amount * 10;
     }
 
     public List< AuctionBidding > close () {
@@ -122,11 +126,11 @@ public class Auction {
         int sum = 0;
         int i;
 
-        for ( i = 0; i < sortedBiddings.size() && sum * 10 < this.amount; i++ ) {
+        for ( i = 0; i < sortedBiddings.size() && sum < this.amount * 10; i++ ) {
             sum += sortedBiddings.get( i ).getAmount();
         }
 
-        if ( sum * 10 < this.amount ) {
+        if ( sum < this.amount * 10 ) {
             return null;
         }
 
@@ -143,6 +147,14 @@ public class Auction {
         ObjectMapper mapper = new ObjectMapper();
 
         return mapper.writeValueAsString( this );
+    }
+
+    public String toString () {
+        try {
+            return this.toJSON();
+        } catch ( JsonProcessingException e ) {
+            return super.toString();
+        }
     }
 
     public static List<Auction> listFromJSON ( String json ) throws IOException {

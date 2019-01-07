@@ -14,7 +14,7 @@ install:
 	wget https://search.maven.org/remotecontent?filepath=com/fasterxml/jackson/core/jackson-core/2.9.8/jackson-core-2.9.8.jar -nc -q --show-progress -O $(LIB_FOLDER)/jackson-core-2.9.8.jar ||:
 	wget https://search.maven.org/remotecontent?filepath=com/fasterxml/jackson/core/jackson-annotations/2.9.8/jackson-annotations-2.9.8.jar -nc -q --show-progress -O $(LIB_FOLDER)/jackson-annotations-2.9.8.jar ||:
 	wget https://search.maven.org/remotecontent?filepath=com/fasterxml/jackson/core/jackson-databind/2.9.8/jackson-databind-2.9.8.jar -nc -q --show-progress -O $(LIB_FOLDER)/jackson-databind-2.9.8.jar ||:
-    wget https://search.maven.org/remotecontent?filepath=org/jetbrains/kotlin/kotlin-stdlib/1.3.11/kotlin-stdlib-1.3.11.jar -nc -q --show-progress -O $(LIB_FOLDER)/kotlin-stdlib-1.3.11.jar ||:
+	wget https://search.maven.org/remotecontent?filepath=org/jetbrains/kotlin/kotlin-stdlib/1.3.11/kotlin-stdlib-1.3.11.jar -nc -q --show-progress -O $(LIB_FOLDER)/kotlin-stdlib-1.3.11.jar ||:
 
 clean:
 	rm -r ./bin
@@ -26,6 +26,6 @@ compile: $(SRC)
 ARGS ?= 12345 12346 localhost 12347
 
 # USAGE
-# make run ARGS="12345 12346 localhost 12347"
+# make run ARGS="12345 12346 localhost 8080"
 run:
 	java -cp "./bin/:$(LIBS)" Exchanges.Main $(ARGS)
