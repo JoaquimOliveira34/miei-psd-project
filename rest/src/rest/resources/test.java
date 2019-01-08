@@ -1,5 +1,7 @@
 package rest.resources;
 import rest.representations.Saying;
+import rest.representations.Auction;
+import rest.representations.Emission;
 
 import java.util.*;
 
@@ -53,120 +55,11 @@ public class test {
         }
 
     }
-    static class Bidding {
-        private int investor;
-        private int amount;
-        private double interestRate;
-
-        public Bidding () {}
-
-        public Bidding ( int investor, int amount, double interestRate ) {
-            this.investor = investor;
-            this.amount = amount;
-            this.interestRate = interestRate;
-        }
-
-        public int getInvestor () {
-            return this.investor;
-        }
-
-        public int getAmount () {
-            return this.amount;
-        }
-
-        public double getInterestRate () {
-            return this.interestRate;
-        }
-
-        public void setInvestor ( int investor ) {
-            this.investor = investor;
-        }
-
-        public void setAmount ( int amount ) {
-            this.amount = amount;
-        }
-
-        public void setInterestRate ( double interestRate ) {
-            this.interestRate = interestRate;
-        }
-    }
-
-
-    static class Auction{
-        private int Id;
-        private int company;
-        private int amount;
-        private double maxInterestRate;
-        private boolean closed = false;
-        private Map<Integer, Bidding> biddings;
-        private List<Bidding> accepted = null;
-
-        public Auction () {}
-
-        public Auction ( int company, int amount, double maxInterestRate ) {
-            this.company = company;
-            this.amount = amount;
-            this.maxInterestRate = maxInterestRate;
-        }
-
-        public void setId ( int id ) {
-            Id = id;
-        }
-
-        public int getId () {
-            return Id;
-        }
-
-        public void setAmount ( int amount ) {
-            this.amount = amount;
-        }
-
-        public int getAmount () {
-            return amount;
-        }
-
-        public int getCompany () {
-            return company;
-        }
-
-        public void setCompany ( int company ) {
-            this.company = company;
-        }
-
-        public void setMaxInterestRate ( double maxInterestRate ) {
-            this.maxInterestRate = maxInterestRate;
-        }
-
-        public double getMaxInterestRate () {
-            return maxInterestRate;
-        }
-
-        public boolean isClosed () {
-            return closed;
-        }
-
-        public void setClosed ( boolean closed ) {
-            this.closed = closed;
-        }
-
-        public List< Bidding > getAccepted () {
-            return accepted;
-        }
-
-        public void setAccepted ( List< Bidding > accepted ) {
-            this.accepted = accepted;
-        }
-
-        public String toString(){
-            return "Id: " + Id + ", Company: " + company + ", Amount: " + amount +", maxInterestRate: " + maxInterestRate +
-                    ", closed: " + closed + ",Biddings: " + biddings.toString() + "Accepted: " + accepted.toString();
-        }
-
-    }
 
     private Map<String,Company> companies;
     private Map<String,Investor> investors;
     private Map<Integer,Auction> auctions;
+    private Map<Integer,Emission> emissions;
     private long requestCounter;
     private final String templateCompanies = "Empresas registadas no sistema :\n%s";
     private final String templateAuctions = "Leiloes registados no sistema :\n%s";
@@ -176,6 +69,7 @@ public class test {
         this.companies = new HashMap<>();
         this.investors = new HashMap<>();
         this.auctions = new HashMap<>();
+        this.emissions = new HashMap<>();
         this.requestCounter = 0;
         this.companies.put("test",new Company(1,"test","Braga"));
         this.investors.put("test",new Investor(1,"test","Braga"));
@@ -299,9 +193,22 @@ public class test {
     }
 
 
+    @GET
+    @Path("/auction/{id}")
+    public Response putAuction ( @PathParam( "id" ) int Id ){
+        synchronized ( this ) {
+            Auction auction = this.auctions.get( Id );
+
+            if ( auction == null ) {
+                return Response.status( Response.Status.NOT_FOUND ).build();
+            }
+
+            return Response.ok( auction ).build();
+        }
+    }
+
     @POST
     @Path("/auction/{id}")
-//    @Consumes("application/json")
     public Response putAuction ( @PathParam( "id" ) int Id, Auction auction ){
         synchronized ( this ) {
             auction.setId( Id );
@@ -309,6 +216,58 @@ public class test {
             this.auctions.put( Id, auction );
 
             return Response.ok(auction).build();
+        }
+    }
+
+    /*
+     * Emissions
+     */
+    @GET
+    @Path("/emissions")
+    public Response getEmissions() {
+        synchronized ( this ) {
+            return Response.ok( new ArrayList<>( this.emissions.values() ) ).build();
+        }
+    }
+
+    @POST
+    @Path("/emissions")
+    public Response postEmission( Emission emission ){
+        synchronized ( this ) {
+            int Id = this.emissions.size();
+
+            emission.setId(Id);
+
+            this.emissions.put(Id, emission);
+
+            return Response.ok(emission).build();
+        }
+    }
+
+
+    @GET
+    @Path("/emission/{id}")
+    public Response putEmission ( @PathParam( "id" ) int Id ){
+        synchronized ( this ) {
+            Emission emission = this.emissions.get( Id );
+
+            if ( emission == null ) {
+                return Response.status( Response.Status.NOT_FOUND ).build();
+            }
+
+            return Response.ok( emission ).build();
+        }
+    }
+
+    @POST
+    @Path("/emission/{id}")
+    public Response putEmission ( @PathParam( "id" ) int Id, Emission emission ){
+        synchronized ( this ) {
+            emission.setId( Id );
+
+            this.emissions.put( Id, emission );
+
+            return Response.ok( emission ).build();
         }
     }
 }
