@@ -120,7 +120,6 @@ class JsonBuilder {
     }
 
     public RequestBody build () {
-        System.out.println( this.toString() );
         // This causes the warning: unknown enum constant DeprecationLevel.ERROR
         return RequestBody.create( JSON, this.toString().getBytes() );
     }
@@ -143,8 +142,6 @@ public class DirectoryClient {
 
     public Auction createAuction ( int company, int amount, double maxInterestRate ) throws IOException {
         String url = this.getResourceUrl( "auctions" );
-
-        System.out.println( url );
 
         RequestBody requestBody = new JsonBuilder()
                 .add( "company", company )
@@ -177,8 +174,6 @@ public class DirectoryClient {
     public void closeAuction ( Auction auction, List< AuctionBidding > biddings ) {
         String url = this.getResourceUrl( "auction", Integer.toString( auction.getId() ) );
 
-        System.out.println( url );
-
         RequestBody requestBody = new JsonBuilder()
                 .add( "company", auction.getCompany() )
                 .add( "amount", auction.getAmount() )
@@ -200,7 +195,7 @@ public class DirectoryClient {
 
 
     public Emission createEmission ( int company, int amount, double interestRate ) throws IOException {
-        String url = this.getResourceUrl( "emissoes" );
+        String url = this.getResourceUrl( "emissions" );
 
         RequestBody requestBody = new JsonBuilder()
                 .add( "company", company )
@@ -231,9 +226,12 @@ public class DirectoryClient {
     }
 
     public void closeEmission ( Emission emission, List<EmissionSubscription> subscribed ) {
-        String url = this.getResourceUrl( "emissao", Integer.toString( emission.getId() ) );
+        String url = this.getResourceUrl( "emission", Integer.toString( emission.getId() ) );
 
         RequestBody requestBody = new JsonBuilder()
+                .add( "company", emission.getCompany() )
+                .add( "amount", emission.getAmount() )
+                .add( "interestRate", emission.getInterestRate() )
                 .add( "subscriptions", subscribed )
                 .build();
 

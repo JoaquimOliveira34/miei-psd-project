@@ -107,7 +107,7 @@ public class Auction {
     }
 
     public boolean isSuccess () {
-        return this.biddings.values().stream().mapToInt( bidding -> bidding.getAmount() ).sum() >= this.amount * 10;
+        return this.biddings.values().stream().mapToInt( AuctionBidding::getAmount ).sum() >= this.amount * 10;
     }
 
     public List< AuctionBidding > close () {
