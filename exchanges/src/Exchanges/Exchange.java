@@ -175,7 +175,7 @@ public class Exchange {
         }
 
         if ( history.isLeft() ) {
-            List< AuctionBidding > biddings = history.getLeft().getAcceptedBiddings();
+            List< AuctionBidding > biddings = history.getLeft().getAccepted();
 
             if ( biddings != null ) {
                 return biddings

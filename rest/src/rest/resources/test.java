@@ -1,11 +1,6 @@
 package rest.resources;
 import rest.representations.Saying;
 
-import jdk.nashorn.internal.objects.annotations.Getter;
-
-import com.google.common.base.Optional;
-
-import java.lang.reflect.Constructor;
 import java.util.*;
 
 import javax.ws.rs.*;
@@ -15,7 +10,7 @@ import javax.ws.rs.core.Response;
 @Path("/peerlending")
 @Produces(MediaType.APPLICATION_JSON)
 public class test {
-    class Company{
+    static class Company{
         private int Id;
         private String name;
         private String zone;
@@ -37,7 +32,7 @@ public class test {
         }
 
     }
-    class Investor{
+    static class Investor{
         private int Id;
         private String name;
         private String zone;
@@ -58,10 +53,12 @@ public class test {
         }
 
     }
-    class Bidding {
+    static class Bidding {
         private int investor;
         private int amount;
         private double interestRate;
+
+        public Bidding () {}
 
         public Bidding ( int investor, int amount, double interestRate ) {
             this.investor = investor;
@@ -80,10 +77,22 @@ public class test {
         public double getInterestRate () {
             return this.interestRate;
         }
+
+        public void setInvestor ( int investor ) {
+            this.investor = investor;
+        }
+
+        public void setAmount ( int amount ) {
+            this.amount = amount;
+        }
+
+        public void setInterestRate ( double interestRate ) {
+            this.interestRate = interestRate;
+        }
     }
 
 
-    class Auction{
+    static class Auction{
         private int Id;
         private int company;
         private int amount;
@@ -92,10 +101,60 @@ public class test {
         private Map<Integer, Bidding> biddings;
         private List<Bidding> accepted = null;
 
+        public Auction () {}
+
         public Auction ( int company, int amount, double maxInterestRate ) {
             this.company = company;
             this.amount = amount;
             this.maxInterestRate = maxInterestRate;
+        }
+
+        public void setId ( int id ) {
+            Id = id;
+        }
+
+        public int getId () {
+            return Id;
+        }
+
+        public void setAmount ( int amount ) {
+            this.amount = amount;
+        }
+
+        public int getAmount () {
+            return amount;
+        }
+
+        public int getCompany () {
+            return company;
+        }
+
+        public void setCompany ( int company ) {
+            this.company = company;
+        }
+
+        public void setMaxInterestRate ( double maxInterestRate ) {
+            this.maxInterestRate = maxInterestRate;
+        }
+
+        public double getMaxInterestRate () {
+            return maxInterestRate;
+        }
+
+        public boolean isClosed () {
+            return closed;
+        }
+
+        public void setClosed ( boolean closed ) {
+            this.closed = closed;
+        }
+
+        public List< Bidding > getAccepted () {
+            return accepted;
+        }
+
+        public void setAccepted ( List< Bidding > accepted ) {
+            this.accepted = accepted;
         }
 
         public String toString(){
@@ -104,10 +163,11 @@ public class test {
         }
 
     }
-    private static Map<String,Company> companies;
-    private static Map<String,Investor> investors;
-    private static Map<Integer,Auction> auctions;
-    private static long requestCounter;
+
+    private Map<String,Company> companies;
+    private Map<String,Investor> investors;
+    private Map<Integer,Auction> auctions;
+    private long requestCounter;
     private final String templateCompanies = "Empresas registadas no sistema :\n%s";
     private final String templateAuctions = "Leiloes registados no sistema :\n%s";
     private final String templateInvestors = "Investidores registados no sistema :\n%s";
@@ -213,25 +273,42 @@ public class test {
         return Response.ok().build();//verificar se n tem auction ativa
     }
 
+    /*
+    * Auctions
+    */
     @GET
     @Path("/auctions")
-    public Saying getAuctions() {
-        final String content = String.format(templateAuctions, this.auctions.toString());
-        long i;
-        synchronized (this) { requestCounter++; i = requestCounter; }
-        // demo only; if counter is resource state, GET should not increment it
-        return new Saying(i, content);
+    public List<Auction> getAuctions() {
+        synchronized ( this ) {
+            return  new ArrayList<>( this.auctions.values() );
+        }
     }
 
     @POST
     @Path("/auctions")
-    public Response postAuction(@FormParam("name") Set<String> names){
-        int Id=this.auctions.size(); //ver concorrencia
-        Iterator i= names.iterator();
-        int company= Integer.parseInt((String) i.next());
-        int amount= Integer.parseInt((String) i.next());
-        double maxInterestRate = Double.parseDouble((String) i.next());
-        this.auctions.put(Id, new Auction(company,amount,maxInterestRate));
-        return Response.ok(Id).build();
+    public Response postAuction( Auction auction ){
+        synchronized ( this ) {
+            int Id = this.auctions.size(); //ver concorrencia
+
+            auction.setId(Id);
+
+            this.auctions.put(Id, auction);
+
+            return Response.ok(auction).build();
+        }
+    }
+
+
+    @POST
+    @Path("/auction/{id}")
+//    @Consumes("application/json")
+    public Response putAuction ( @PathParam( "id" ) int Id, Auction auction ){
+        synchronized ( this ) {
+            auction.setId( Id );
+
+            this.auctions.put( Id, auction );
+
+            return Response.ok(auction).build();
+        }
     }
 }

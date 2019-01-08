@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.node.*;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Spliterator;
 
 /*
 GET /empresas
@@ -82,17 +84,21 @@ class JsonBuilder {
     }
 
     public JsonBuilder add ( String field, Collection< ? > values ) {
-        ArrayNode node = this.mapper.createArrayNode();
+        if ( values != null ) {
+            ArrayNode node = this.mapper.createArrayNode();
 
-        values.forEach( value -> {
-            if ( value instanceof JsonBuilder ) {
-                node.add( ( ( JsonBuilder ) value ).getObjectNode() );
-            } else {
-                node.add( this.mapper.valueToTree( value ) );
-            }
-        } );
+            values.forEach( value -> {
+                if ( value instanceof JsonBuilder ) {
+                    node.add( ( ( JsonBuilder ) value ).getObjectNode() );
+                } else {
+                    node.add( this.mapper.valueToTree( value ) );
+                }
+            } );
 
-        this.root.set( field, node );
+            this.root.set( field, node );
+        } else {
+            this.root.set( field, NullNode.getInstance() );
+        }
 
         return this;
     }
@@ -114,7 +120,8 @@ class JsonBuilder {
     }
 
     public RequestBody build () {
-        // This causes de warning: unknown enum constant DeprecationLevel.ERROR
+        System.out.println( this.toString() );
+        // This causes the warning: unknown enum constant DeprecationLevel.ERROR
         return RequestBody.create( JSON, this.toString().getBytes() );
     }
 }
@@ -131,11 +138,13 @@ public class DirectoryClient {
     }
 
     protected String getResourceUrl ( String... segments ) {
-        return String.format( "http://%s:%d/", this.address, this.port, String.join( "/", segments ) );
+        return String.format( "http://%s:%d/peerlending/%s", this.address, this.port, String.join( "/", segments ) );
     }
 
     public Auction createAuction ( int company, int amount, double maxInterestRate ) throws IOException {
-        String url = this.getResourceUrl( "leiloes" );
+        String url = this.getResourceUrl( "auctions" );
+
+        System.out.println( url );
 
         RequestBody requestBody = new JsonBuilder()
                 .add( "company", company )
@@ -149,7 +158,15 @@ public class DirectoryClient {
                 .build();
 
         try ( Response response = client.newCall( request ).execute() ) {
-            return Auction.fromJSON( response.body().string() );
+            int code = response.code();
+
+            String string = response.body().string();
+
+            if ( code < 200 || code > 200 ) {
+                System.out.println( string + code );
+            }
+
+            return Auction.fromJSON( string );
         }
     }
 
@@ -158,10 +175,15 @@ public class DirectoryClient {
     }
 
     public void closeAuction ( Auction auction, List< AuctionBidding > biddings ) {
-        String url = this.getResourceUrl( "leilao", Integer.toString( auction.getId() ) );
+        String url = this.getResourceUrl( "auction", Integer.toString( auction.getId() ) );
+
+        System.out.println( url );
 
         RequestBody requestBody = new JsonBuilder()
-                .add( "biddings", biddings )
+                .add( "company", auction.getCompany() )
+                .add( "amount", auction.getAmount() )
+                .add( "maxInterestRate", auction.getMaxInterestRate() )
+                .add( "accepted", biddings )
                 .build();
 
         Request request = new Request.Builder()
@@ -192,7 +214,15 @@ public class DirectoryClient {
                 .build();
 
         try ( Response response = client.newCall( request ).execute() ) {
-            return Emission.fromJSON( response.body().string() );
+            int code = response.code();
+
+            String string = response.body().string();
+
+            if ( code < 200 || code > 200 ) {
+                System.out.println( string + code );
+            }
+
+            return Emission.fromJSON( string );
         }
     }
 
