@@ -91,10 +91,6 @@ public class Auction {
     }
 
     public void bid ( AuctionBidding bidding ) throws ExchangeException {
-        if ( this.biddings.containsKey( bidding.getInvestor() ) ) {
-            throw new ExchangeException( ExchangeExceptionType.DuplicateBidding );
-        }
-
         if ( bidding.getAmount() > this.amount * 10  || bidding.getAmount() <= 0 ) {
             throw new ExchangeException( ExchangeExceptionType.InvalidAmount );
         }

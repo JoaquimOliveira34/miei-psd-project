@@ -84,11 +84,16 @@ public class Emission {
     }
 
     public void subscribe ( EmissionSubscription subscription ) throws ExchangeException {
+        // If an investor is subscribing to an emission he has already subscribed to
+        // We want to subtract the amount he already subscribed when cehcking if the subscription
+        // goes overboard the total amount of the emission
+        int existing = 0;
+
         if ( this.subscriptions.containsKey( subscription.getInvestor() ) ) {
-            throw new ExchangeException( ExchangeExceptionType.DuplicateBidding );
+            existing = this.subscriptions.get( existing ).getAmount();
         }
 
-        if ( ( subscription.getAmount() + this.getSubscribedAmount() ) > this.amount * 10 || subscription.getAmount() <= 0 ) {
+        if ( ( subscription.getAmount() + this.getSubscribedAmount() - existing ) > this.amount * 10 || subscription.getAmount() <= 0 ) {
             throw new ExchangeException( ExchangeExceptionType.InvalidAmount );
         }
 
