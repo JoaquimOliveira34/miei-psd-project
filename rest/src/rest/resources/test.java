@@ -1,7 +1,5 @@
 package rest.resources;
-import rest.representations.Saying;
-import rest.representations.Auction;
-import rest.representations.Emission;
+import rest.representations.*;
 
 import java.util.*;
 
@@ -12,52 +10,10 @@ import javax.ws.rs.core.Response;
 @Path("/peerlending")
 @Produces(MediaType.APPLICATION_JSON)
 public class test {
-    static class Company{
-        private int Id;
-        private String name;
-        private String zone;
-        private List<Integer> auctions;
 
-        public Company(int id, String name, String zone){
-            this.Id = id;
-            this.name=name;
-            this.zone=zone;
-            this.auctions = new ArrayList<>();
-        }
 
-        public void addAuction(int auctionId){
-            this.auctions.add(auctionId);
-        }
-
-        public String toString(){
-            return "Name " + this.name + " , Zone " + this.zone +"\nAuctions Participated: " + this.auctions.toString();
-        }
-
-    }
-    static class Investor{
-        private int Id;
-        private String name;
-        private String zone;
-        private List<Integer> auctionsBidded;
-
-        public Investor(int id,String name, String zone){
-            this.name=name;
-            this.zone=zone;
-            this.auctionsBidded = new ArrayList<>();
-        }
-
-        public void addBid(int auctionId){
-            this.auctionsBidded.add(auctionId);
-        }
-
-        public String toString(){
-            return "Name " + this.name + " , Zone " + this.zone +"\nAuctions Participated: " + this.auctionsBidded.toString();
-        }
-
-    }
-
-    private Map<String,Company> companies;
-    private Map<String,Investor> investors;
+    private Map<String, Company> companies;
+    private Map<String, Investor> investors;
     private Map<Integer,Auction> auctions;
     private Map<Integer,Emission> emissions;
     private long requestCounter;
@@ -109,7 +65,7 @@ public class test {
             Company c = new Company(Integer.parseInt(id),name,zone);
             if(c==null)
                 error = true;
-            else this.companies.put(c.name, c);
+            else this.companies.put(c.getName(), c);
 
         return Response.ok().build();
         //if (!error) return Response.ok().build();
@@ -151,10 +107,10 @@ public class test {
         String id= (String) i.next();
         String name= (String) i.next();
         String zone= (String) i.next();
-        Company c = new Company(Integer.parseInt(id),name,zone);
-        if(c==null)
+        Investor inv = new Investor(Integer.parseInt(id),name,zone);
+        if(inv==null)
             error = true;
-        else this.companies.put(c.name, c);
+        else this.investors.put(inv.getName(),inv);
 
         return Response.ok().build();
         //if (!error) return Response.ok().build();
