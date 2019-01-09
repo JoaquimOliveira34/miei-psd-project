@@ -77,25 +77,24 @@ public class test {
 
     @GET
     @Path("/investors")
-    public Saying getInvestors() {
-        final String content = String.format(templateInvestors, this.investors.toString());
-        long i;
-        synchronized (this) { requestCounter++; i = requestCounter; }
-        // demo only; if counter is resource state, GET should not increment it
-        return new Saying(i, content);
+    public List<Investor> getInvestors() {
+        synchronized ( this ) {
+            return  new ArrayList<>( this.investors.values() );
+        }
     }
 
     @GET
     @Path("/investor/{name}")
-    public Saying getInvestor(@PathParam("name") String name) {
+    public Response getInvestor(@PathParam("name") String name) {
         long i;
         synchronized (this) { requestCounter++; i = requestCounter; }
         if(this.investors.containsKey(name)){
-        Investor inv = this.investors.get(name);
-        final String content = String.format(templateInvestors, inv.toString());
-        String s = inv.toString();
-        // demo only; if counter is resource state, GET should not increment it
-        return new Saying(i, content);}
+            Investor inv = this.investors.get(name);
+            final String content = String.format(templateInvestors, inv.toString());
+            String s = inv.toString();
+            // demo only; if counter is resource state, GET should not increment i
+            return Response.ok( inv ).build();
+        }
         else throw new WebApplicationException(Response.Status.NOT_FOUND);
     }
 
@@ -119,8 +118,11 @@ public class test {
     @DELETE
     @Path("/company/{name}")
     public Response deleteCompany(@PathParam("name") String name) {
-        this.companies.remove(name);
-        return Response.ok().build();//verificar se n tem auction ativa
+        if (this.companies.containsKey(name)) {
+            this.companies.remove(name);
+            return Response.ok(true).build();
+        }
+        else return Response.noContent().build();//verificar se n tem auction ativa
     }
 
     /*
