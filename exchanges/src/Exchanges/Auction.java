@@ -91,10 +91,6 @@ public class Auction {
     }
 
     public void bid ( AuctionBidding bidding ) throws ExchangeException {
-        if ( this.biddings.containsKey( bidding.getInvestor() ) ) {
-            throw new ExchangeException( ExchangeExceptionType.DuplicateBidding );
-        }
-
         if ( bidding.getAmount() > this.amount * 10  || bidding.getAmount() <= 0 ) {
             throw new ExchangeException( ExchangeExceptionType.InvalidAmount );
         }
@@ -107,7 +103,7 @@ public class Auction {
     }
 
     public boolean isSuccess () {
-        return this.biddings.values().stream().mapToInt( bidding -> bidding.getAmount() ).sum() >= this.amount * 10;
+        return this.biddings.values().stream().mapToInt( AuctionBidding::getAmount ).sum() >= this.amount * 10;
     }
 
     public List< AuctionBidding > close () {

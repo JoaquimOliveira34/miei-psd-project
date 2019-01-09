@@ -1,5 +1,6 @@
 package Exchanges;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +29,7 @@ class EmissionSubscription {
     }
 }
 
+@JsonIgnoreProperties( ignoreUnknown = true )
 public class Emission {
     private int    id;
     private int    company;
@@ -74,7 +76,7 @@ public class Emission {
     }
 
     public boolean isCompleted () {
-        return this.getSubscribedAmount() * 10 == this.amount;
+        return this.getSubscribedAmount() == this.amount * 10;
     }
 
     public void subscribe ( int investor, int amount ) throws ExchangeException {
@@ -82,11 +84,16 @@ public class Emission {
     }
 
     public void subscribe ( EmissionSubscription subscription ) throws ExchangeException {
+        // If an investor is subscribing to an emission he has already subscribed to
+        // We want to subtract the amount he already subscribed when cehcking if the subscription
+        // goes overboard the total amount of the emission
+        int existing = 0;
+
         if ( this.subscriptions.containsKey( subscription.getInvestor() ) ) {
-            throw new ExchangeException( ExchangeExceptionType.DuplicateBidding );
+            existing = this.subscriptions.get( existing ).getAmount();
         }
 
-        if ( ( subscription.getAmount() + this.getSubscribedAmount() ) * 10 > this.amount || subscription.getAmount() <= 0 ) {
+        if ( ( subscription.getAmount() + this.getSubscribedAmount() - existing ) > this.amount * 10 || subscription.getAmount() <= 0 ) {
             throw new ExchangeException( ExchangeExceptionType.InvalidAmount );
         }
 
@@ -107,6 +114,14 @@ public class Emission {
         ObjectMapper mapper = new ObjectMapper();
 
         return mapper.writeValueAsString( this );
+    }
+
+    public String toString () {
+        try {
+            return this.toJSON();
+        } catch ( JsonProcessingException e ) {
+            return super.toString();
+        }
     }
 
     public static List<Emission> listFromJSON ( String json ) throws IOException {
