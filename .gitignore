@@ -9,6 +9,8 @@ exchanges/.idea
 exchanges/bin
 exchanges/lib
 
+rest/target
+
 # User-specific stuff
 .idea/**/workspace.xml
 .idea/**/tasks.xml
