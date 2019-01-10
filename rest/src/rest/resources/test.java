@@ -24,6 +24,10 @@ public class test {
     private final String templateAuctions = "Leiloes registados no sistema :\n%s";
     private final String templateInvestors = "Investidores registados no sistema :\n%s";
 
+    private Company getCompanyById ( int id ) {
+        return this.companies.values().stream().filter( company -> company.getId() == id ).findFirst().orElse( null );
+    }
+
     public test(){
         this.companies = new HashMap<>();
         this.investors = new HashMap<>();
@@ -183,6 +187,14 @@ public class test {
     public Response postAuction( Auction auction ){
         synchronized ( this ) {
             int Id = this.auctions.size(); //ver concorrencia
+
+            Company company = this.getCompanyById( auction.getCompany() );
+
+            if ( company == null ) {
+                return Response.status( Response.Status.BAD_REQUEST ).build();
+            }
+
+            company.addAuction( Id );
 
             auction.setId(Id);
 

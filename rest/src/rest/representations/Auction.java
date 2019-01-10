@@ -48,8 +48,7 @@ public class Auction{
     private int amount;
     private double maxInterestRate;
     private boolean closed = false;
-    private Map<Integer, Bidding> biddings;
-    private List<Bidding> accepted = null;
+    private List<Bidding> biddings = null;
 
     public Auction () {}
 
@@ -99,16 +98,16 @@ public class Auction{
         this.closed = closed;
     }
 
-    public List< Bidding > getAccepted () {
-        return accepted;
+    public List< Bidding > getBiddings () {
+        return biddings;
     }
 
-    public void setAccepted ( List< Bidding > accepted ) {
-        this.accepted = accepted;
+    public void setBiddings ( List< Bidding > biddings ) {
+        this.biddings = biddings;
     }
 
     public String toString(){
         return "Id: " + Id + ", Company: " + company + ", Amount: " + amount +", maxInterestRate: " + maxInterestRate +
-               ", closed: " + closed + ",Biddings: " + biddings.toString() + "Accepted: " + accepted.toString();
+               ", closed: " + closed + ",Biddings: " + biddings.toString();
     }
 }
