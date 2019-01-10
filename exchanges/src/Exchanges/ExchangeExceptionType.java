@@ -7,11 +7,11 @@ public enum ExchangeExceptionType {
     InvalidInterestRate,
     InvalidAmount,
 
-    DuplicateBidding,
+    AntiCompetitiveBid,
+
     DuplicateAuction,
 
     DuplicateEmission,
-    DuplicateSubscription,
 
     // When there is already an auction and tries to create an emission
     // Or vice-versa

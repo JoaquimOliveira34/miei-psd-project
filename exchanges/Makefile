@@ -23,9 +23,9 @@ compile: $(SRC)
 	mkdir -p ./bin
 	javac -d ./bin -cp $(LIBS) ./src/**/*.java
 
-ARGS ?= 12345 12346 localhost 12347
+ARGS ?= 12345 12346 12347 localhost 8080
 
 # USAGE
-# make run ARGS="12345 12346 localhost 8080"
+# make run ARGS="12345 12346 12347 localhost 8080"
 run:
 	java -cp "./bin/:$(LIBS)" Exchanges.Main $(ARGS)

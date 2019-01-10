@@ -1,6 +1,7 @@
 package Exchanges;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,8 @@ interface ExchangeController {
     void auctionCreated ( Auction auction );
 
     void auctionClosed ( int company, List< AuctionBidding > biddings );
+
+    void auctionBiddingInvalidated ( int company, int investor, AuctionBidding lowest );
 
     void emissionCreated ( Emission emission );
 
@@ -137,7 +140,11 @@ public class Exchange {
 
         Auction auction = this.auctions.get( company );
 
-        auction.bid( investor, amount, rate );
+        Collection< AuctionBidding > invalidated = auction.bid( investor, amount, rate );
+
+        for ( AuctionBidding bidding : invalidated ) {
+            this.controller.auctionBiddingInvalidated( company, bidding.getInvestor(), auction.getLowestBid() );
+        }
     }
 
     public void closeAuction ( int company ) throws ExchangeException {
@@ -153,7 +160,6 @@ public class Exchange {
 
         this.auctions.remove( company );
 
-
         if ( this.controller != null ) {
             synchronized ( this.controller ) {
                 this.controller.auctionClosed( company, accepted );
@@ -168,14 +174,14 @@ public class Exchange {
      * @return
      */
     public double getEmissionInterestRate ( int company ) {
-        Either<Auction, Emission> history = this.history.get( company );
+        Either< Auction, Emission > history = this.history.get( company );
 
         if ( history == null ) {
             return -1;
         }
 
         if ( history.isLeft() ) {
-            List< AuctionBidding > biddings = history.getLeft().getAccepted();
+            List< AuctionBidding > biddings = history.getLeft().getBiddings();
 
             if ( biddings != null ) {
                 return biddings

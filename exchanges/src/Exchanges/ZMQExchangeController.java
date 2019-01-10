@@ -9,18 +9,23 @@ import java.util.List;
 public class ZMQExchangeController implements ExchangeController {
     private Exchange    exchange;
     private ZMQ.Context context;
-    private ZMQ.Socket  replySocket;
+    private ZMQ.Socket  pullSocket;
+    private ZMQ.Socket  pushSocket;
     private ZMQ.Socket  publisher;
     private ZMQ.Socket  schedulerSocket;
     private ZMQ.Socket  schedulerSocketPush;
-    private int         replyPort;
+    private int         pullPort;
+    private int         pushPort;
     private int         publisherPort;
 
-    public ZMQExchangeController ( int replyPort, int publisherPort, DirectoryClient directory ) {
+    public ZMQExchangeController ( int pullPort, int pushPort, int publisherPort, DirectoryClient directory ) {
         this.context = ZMQ.context( 1 );
 
-        // Socket that receives requests from the erlang frontend and sends replies
-        this.replySocket = context.socket( ZMQ.REP );
+        // Socket that receives requests from the erlang frontend
+        this.pullSocket = context.socket( ZMQ.PULL );
+
+        // Socket that sends messages to the erlang frontend
+        this.pushSocket = context.socket( ZMQ.PUSH );
 
         // Socket responsible for publishing notifications
         this.publisher = context.socket( ZMQ.PUB );
@@ -33,18 +38,22 @@ public class ZMQExchangeController implements ExchangeController {
         this.schedulerSocketPush = context.socket( ZMQ.PUSH );
 
 
-        this.replyPort = replyPort;
+        this.pullPort = pullPort;
+
+        this.pushPort = pushPort;
 
         this.publisherPort = publisherPort;
 
 
-        this.replySocket.bind( "tcp://*:" + Integer.toString( replyPort ) );
+        this.pullSocket.connect( "tcp://*:" + Integer.toString( pullPort ) );
+
+        this.pushSocket.bind( "tcp://*:" + Integer.toString( pushPort ) );
+
+        this.publisher.bind( "tcp://*:" + Integer.toString( publisherPort ) );
 
         this.schedulerSocket.bind( "inproc://scheduler" );
 
         this.schedulerSocketPush.connect( "inproc://scheduler" );
-
-        this.publisher.bind( "tcp://*:" + Integer.toString( publisherPort ) );
 
 
         this.exchange = new Exchange( directory, this );
@@ -54,13 +63,18 @@ public class ZMQExchangeController implements ExchangeController {
         this.publisher.send( Protos.Notification.newBuilder().setCompany( company ).setMessage( message ).build().toByteArray() );
     }
 
-    private void publish ( int company, String format, Object ... args ) {
+    private void publish ( int company, String format, Object... args ) {
         this.publish( company, String.format( format, args ) );
     }
 
     @Override
     public void auctionCreated ( Auction auction ) {
         this.publish( auction.getCompany(), "Auction created with ammount %d and max interest rate %d.", auction.getAmount(), auction.getMaxInterestRate() );
+    }
+
+    @Override
+    public void auctionBiddingInvalidated ( int company, int investor, AuctionBidding lowest ) {
+        this.sendReply( investor, String.format( "Your bidding for company %d was invalidated, lowest is now %d.", company, lowest.getAmount(), lowest.getInterestRate() ) );
     }
 
     @Override
@@ -111,14 +125,19 @@ public class ZMQExchangeController implements ExchangeController {
         }
     }
 
-    public void sendSuccess () {
-        this.replySocket.send( Protos.ServerResponse.newBuilder().setResponse( true ).build().toByteArray() );
+    public void sendReply ( int user, String response ) {
+        this.pushSocket.send(
+                Protos.ServerResponse.newBuilder()
+                        .setUserId( user )
+                        .setResponse( response )
+                        .build().toByteArray()
+        );
     }
 
-    public void sendError ( String error ) {
-        replySocket.send(
+    public void sendError ( int user, String error ) {
+        this.pushSocket.send(
                 Protos.ServerResponse.newBuilder()
-                        .setResponse( false )
+                        .setUserId( user )
                         .setError( error )
                         .build().toByteArray()
         );
@@ -130,16 +149,18 @@ public class ZMQExchangeController implements ExchangeController {
         // The second one notifies us when an auction/emission is ready to be closed
         ZMQ.Poller poller = this.context.poller( 1 );
 
-        poller.register( this.replySocket, ZMQ.Poller.POLLIN );
+        poller.register( this.pullSocket, ZMQ.Poller.POLLIN );
         poller.register( this.schedulerSocket, ZMQ.Poller.POLLIN );
 
-        System.out.printf( ">> Exchange listening on port %d (notifications on port %d)\n", this.replyPort, this.publisherPort );
+        System.out.printf( ">> Exchange pulling on port %d, pushing on port %d (notifications on port %d)\n", this.pullPort, this.pushPort, this.publisherPort );
+
+        int id = 0;
 
         while ( true ) {
             poller.poll();
 
             if ( poller.pollin( 0 ) ) {
-                byte[] bytes = replySocket.recv( ZMQ.DONTWAIT );
+                byte[] bytes = pullSocket.recv( ZMQ.DONTWAIT );
 
                 try {
                     Protos.MsgExchange message = Protos.MsgExchange.parseFrom( bytes );
@@ -147,26 +168,30 @@ public class ZMQExchangeController implements ExchangeController {
                     // Can receive two types of messages from the same socket: decide which one it is and call the
                     // appropriate method
                     if ( message.getType() == Protos.MsgExchange.Type.COMPANY ) {
+                        id = message.getCompany().getCompanyId();
+
                         this.onCompanyMessage( message.getCompany() );
                     } else if ( message.getType() == Protos.MsgExchange.Type.INVESTOR ) {
-                        this.onInvestorMessage( message.getInvestor() );
-                    }
+                        id = message.getInvestor().getInvestorId();
 
-                    this.sendSuccess();
+                        this.onInvestorMessage( message.getInvestor() );
+                    } else {
+                        id = -1;
+                    }
                 } catch ( InvalidProtocolBufferException e ) {
                     e.printStackTrace();
 
                     // There was an error with the parsing of the message. Send a response to the socket saying so
-                    this.sendError( ExchangeExceptionType.InvalidMessage.toString() );
+                    this.sendError( id, ExchangeExceptionType.InvalidMessage.toString() );
                 } catch ( ExchangeException e ) {
-                    this.sendError( e.getMessage() );
+                    this.sendError( id, e.getMessage() );
                 }
             }
 
             // We check if the 1-indexed socket (schedulerSocket) has any incoming messages
             // If so, we read the company id and close the auction
             if ( poller.pollin( 1 ) ) {
-                byte[] bytes = replySocket.recv( ZMQ.DONTWAIT );
+                byte[] bytes = pullSocket.recv( ZMQ.DONTWAIT );
 
                 int company = byteArrayToInt( bytes );
 
