@@ -1,7 +1,10 @@
 package rest.resources;
 import rest.representations.*;
+import sun.security.provider.certpath.OCSPResponse;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -16,7 +19,7 @@ public class test {
     private Map<String, Investor> investors;
     private Map<Integer,Auction> auctions;
     private Map<Integer,Emission> emissions;
-    private long requestCounter;
+    private AtomicInteger idCounter;
     private final String templateCompanies = "Empresas registadas no sistema :\n%s";
     private final String templateAuctions = "Leiloes registados no sistema :\n%s";
     private final String templateInvestors = "Investidores registados no sistema :\n%s";
@@ -26,51 +29,70 @@ public class test {
         this.investors = new HashMap<>();
         this.auctions = new HashMap<>();
         this.emissions = new HashMap<>();
-        this.requestCounter = 0;
-        this.companies.put("test",new Company(1,"test","Braga"));
-        this.investors.put("test",new Investor(1,"test","Braga"));
+        this.idCounter = new AtomicInteger(0);
+        this.companies.put("test",new Company(this.idCounter.incrementAndGet(),"test","password","Braga"));
+        this.investors.put("test",new Investor(this.idCounter.incrementAndGet(),"test","password","Braga"));
 
     }
 
     @GET
     @Path("/companies")
-    public Saying getCompanies() {
+    public List<Company> getCompanies() {
+        /*
         final String content = String.format(templateCompanies, this.companies.toString());
         long i;
         synchronized (this) { requestCounter++; i = requestCounter; }
         // demo only; if counter is resource state, GET should not increment it
-        return new Saying(i, content);
+        return new Saying(i, content);*/
+        synchronized ( this ) {
+            return  new ArrayList<>( this.companies.values() );
+        }
+    }
+    @POST
+    @Path("/companies")
+    public Response postCompany(Company company) {
+        synchronized (this){
+            if(this.companies.containsKey(company.getName()))
+                return Response.status(Response.Status.PRECONDITION_FAILED).build();
+            else {
+                int Id = this.idCounter.incrementAndGet();
+                company.setId(Id);
+                this.companies.put(company.getName(),company);
+                return Response.ok(Id).build();
+            }
+        }
+    }
+
+    @PUT
+    @Path("/company/{name}")
+    public Response putCompany(@PathParam("name") String name, Company company) {
+        synchronized (this){
+            if(this.companies.containsKey(company.getName())) {
+                this.companies.put(company.getName(), company);
+                return Response.status(Response.Status.OK).build();
+            }
+            else {
+                int Id = this.idCounter.incrementAndGet();
+                company.setId(Id);
+                this.companies.put(name,company);
+                return Response.ok(Id).build();
+            }
+        }
     }
 
     @GET
     @Path("/company/{name}")
-    public Saying getCompany(@PathParam("name") String name) {
-        Company c = this.companies.get(name);
-        final String content = String.format(templateCompanies, c.toString());
-        String s = c.toString();
-        long i;
-        synchronized (this) { requestCounter++; i = requestCounter; }
-        // demo only; if counter is resource state, GET should not increment it
-        return new Saying(i, s);
+    public Response getCompany(@PathParam("name") String name) {
+        Company c;
+        synchronized (this) {
+            c = this.companies.get(name);
+        }
+        if (c == null)
+            return Response.status (Response.Status.NOT_FOUND).build();
+        else return Response.ok(c).build();
+
     }
 
-    @PUT
-    @Path("/company/{names}")
-    public Response putCompany(@FormParam("name") Set<String> names) { //testar...
-        boolean error = false;
-            Iterator i= names.iterator();
-            String id= (String) i.next();
-            String name= (String) i.next();
-            String zone= (String) i.next();
-            Company c = new Company(Integer.parseInt(id),name,zone);
-            if(c==null)
-                error = true;
-            else this.companies.put(c.getName(), c);
-
-        return Response.ok().build();
-        //if (!error) return Response.ok().build();
-        //else return Response.serverError().build(); //ver melhor
-    }
 
 
 
@@ -87,33 +109,43 @@ public class test {
     @Path("/investor/{name}")
     public Response getInvestor(@PathParam("name") String name) {
         long i;
-        synchronized (this) { requestCounter++; i = requestCounter; }
         if(this.investors.containsKey(name)){
             Investor inv = this.investors.get(name);
-            final String content = String.format(templateInvestors, inv.toString());
-            String s = inv.toString();
-            // demo only; if counter is resource state, GET should not increment i
             return Response.ok( inv ).build();
         }
-        else throw new WebApplicationException(Response.Status.NOT_FOUND);
+        else return Response.status(Response.Status.NOT_FOUND).build();
+    }
+
+    @POST
+    @Path("/investors")
+    public Response postInvestor(Investor inv) {
+        synchronized (this){
+            if(this.investors.containsKey(inv.getName()))
+                return Response.status(Response.Status.PRECONDITION_FAILED).build();
+            else {
+                int Id = this.idCounter.incrementAndGet();
+                inv.setId(Id);
+                this.investors.put(inv.getName(),inv);
+                return Response.ok(Id).build();
+            }
+        }
     }
 
     @PUT
-    @Path("/investor/{names}")
-    public Response putInvestor(@FormParam("name") Set<String> names) {
-        boolean error = false;
-        Iterator i= names.iterator();
-        String id= (String) i.next();
-        String name= (String) i.next();
-        String zone= (String) i.next();
-        Investor inv = new Investor(Integer.parseInt(id),name,zone);
-        if(inv==null)
-            error = true;
-        else this.investors.put(inv.getName(),inv);
-
-        return Response.ok().build();
-        //if (!error) return Response.ok().build();
-        //else return Response.serverError().build(); //ver melhor
+    @Path("/investor/{name}")
+    public Response putInvestor(@PathParam("name") String name, Investor inv) {
+        synchronized (this){
+            if(this.investors.containsKey(inv.getName())) {
+                this.investors.put(inv.getName(), inv);
+                return Response.status(Response.Status.OK).build();
+            }
+            else {
+                int Id = this.idCounter.incrementAndGet();
+                inv.setId(Id);
+                this.investors.put(inv.getName(),inv);
+                return Response.ok(Id).build();
+            }
+        }
     }
     @DELETE
     @Path("/company/{name}")
@@ -123,6 +155,16 @@ public class test {
             return Response.ok(true).build();
         }
         else return Response.noContent().build();//verificar se n tem auction ativa
+    }
+
+    @DELETE
+    @Path("/investor/{name}")
+    public Response deleteInvestor(@PathParam("name") String name) {
+        if (this.companies.containsKey(name)) {
+            this.companies.remove(name);
+            return Response.ok().build();
+        }
+        else return Response.status(Response.Status.NOT_FOUND).build();
     }
 
     /*

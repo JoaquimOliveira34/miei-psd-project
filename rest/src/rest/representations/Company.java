@@ -6,25 +6,37 @@ import java.util.List;
 public class Company {
     private int Id;
     private String name;
+    private String password;
     private String zone;
     private List<Integer> auctions;
 
-    public Company(){};
+    public Company(){}
 
-    public Company(int id, String name, String zone){
+    public Company(int id, String name, String password, String zone){
         this.Id = id;
         this.name=name;
+        this.password=password;
         this.zone=zone;
         this.auctions = new ArrayList<>();
     }
 
 
-    public Company(String name, String zone){
+    public Company(String name,String password, String zone){
         this.Id = -1;
         this.name=name;
+        this.password=password;
         this.zone=zone;
         this.auctions = new ArrayList<>();
     }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     public int getId() {
         return Id;
     }
@@ -64,5 +76,6 @@ public class Company {
     public String toString(){
         return "Name " + this.name + " , Zone " + this.zone +"\nAuctions Participated: " + this.auctions.toString();
     }
+
 
 }

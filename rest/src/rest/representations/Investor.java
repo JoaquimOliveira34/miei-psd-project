@@ -6,20 +6,30 @@ import java.util.List;
 public class Investor {
     private int Id;
     private String name;
+    private String password;
     private String zone;
     private List<Integer> auctionsBidded;
     public Investor(){};
 
-    public Investor(int id,String name, String zone){
+    public Investor(int id,String name, String password, String zone){
         this.name=name;
+        this.password=password;
         this.zone=zone;
         this.auctionsBidded = new ArrayList<>();
     }
-    public Investor(String name, String zone){
+    public Investor(String name, String password, String zone){
         this.Id = -1;
         this.name=name;
         this.zone=zone;
         this.auctionsBidded = new ArrayList<>();
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public int getId() {
