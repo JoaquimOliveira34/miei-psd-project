@@ -8,9 +8,19 @@ import java.io.IOException;
 import java.util.*;
 
 class AuctionBidding implements Comparable< AuctionBidding > {
+    private static long ai = 0;
+
+    public static long increment () {
+        return AuctionBidding.ai++;
+    }
+
     private int    investor;
     private int    amount;
     private double interestRate;
+
+    // When two biddings with the same interest rate are proposed, the oldest always has priority
+    // And to know which one is the oldest, we use this long counter
+    private long order = AuctionBidding.increment();
 
     public AuctionBidding ( int investor, int amount, double interestRate ) {
         this.investor = investor;
@@ -30,9 +40,21 @@ class AuctionBidding implements Comparable< AuctionBidding > {
         return this.interestRate;
     }
 
+    public long getOrder () {
+        return order;
+    }
+
     @Override
     public int compareTo ( AuctionBidding auctionBidding ) {
+        if ( auctionBidding.getInterestRate() == this.getInterestRate() ) {
+            return Long.compare( auctionBidding.order, this.order );
+        }
+
         return Double.compare( auctionBidding.getInterestRate(), this.interestRate );
+    }
+
+    public String toString () {
+        return Long.toString( this.getOrder() );
     }
 }
 
@@ -138,6 +160,8 @@ public class Auction {
 
         this.biddingsByRate.add( bidding );
 
+        this.biddingsTotal += bidding.getAmount();
+
         // Since we created a new bidding, we have to be aware of the case that some biddings might have been invalidated:
         // that is, that some biddings with higher interest rates might no longer be in play for this auction
         // Son they can be safely removed
@@ -162,6 +186,8 @@ public class Auction {
 
             this.biddingsTotal -= cursor.getAmount();
 
+            invalidatedBiddings.add( cursor );
+
             iterator.remove();
         }
 
@@ -172,23 +198,19 @@ public class Auction {
         return this.biddingsTotal >= this.amount * 10;
     }
 
-    public List< AuctionBidding > close () {
+    public boolean close () {
         if ( this.closed ) {
-            return this.biddings;
+            return this.isSuccess();
         }
 
         this.closed = true;
 
-        if ( this.isSuccess() ) {
-            this.biddings = new ArrayList<>( this.biddingsByRate );
-        } else {
-            this.biddings = null;
-        }
+        this.biddings = new ArrayList<>( this.biddingsByRate );
 
         this.biddingsByInvestor.clear();
         this.biddingsByRate.clear();
 
-        return this.biddings;
+        return this.isSuccess();
     }
 
     public static Auction fromJSON ( String json ) throws IOException {

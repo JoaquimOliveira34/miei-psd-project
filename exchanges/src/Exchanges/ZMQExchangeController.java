@@ -3,6 +3,7 @@ package Exchanges;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.zeromq.ZMQ;
 
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -45,11 +46,11 @@ public class ZMQExchangeController implements ExchangeController {
         this.publisherPort = publisherPort;
 
 
-        this.pullSocket.connect( "tcp://*:" + Integer.toString( pullPort ) );
+        this.pullSocket.connect( "tcp://localhost:" + Integer.toString( pullPort ) );
 
-        this.pushSocket.bind( "tcp://*:" + Integer.toString( pushPort ) );
+        this.pushSocket.bind( "tcp://localhost:" + Integer.toString( pushPort ) );
 
-        this.publisher.bind( "tcp://*:" + Integer.toString( publisherPort ) );
+        this.publisher.bind( "tcp://localhost:" + Integer.toString( publisherPort ) );
 
         this.schedulerSocket.bind( "inproc://scheduler" );
 
@@ -69,20 +70,28 @@ public class ZMQExchangeController implements ExchangeController {
 
     @Override
     public void auctionCreated ( Auction auction ) {
-        this.publish( auction.getCompany(), "Auction created with ammount %d and max interest rate %d.", auction.getAmount(), auction.getMaxInterestRate() );
+        this.publish( auction.getCompany(), "Auction created with ammount %d and max interest rate %f.", auction.getAmount(), auction.getMaxInterestRate() );
     }
 
     @Override
     public void auctionBiddingInvalidated ( int company, int investor, AuctionBidding lowest ) {
-        this.sendReply( investor, String.format( "Your bidding for company %d was invalidated, lowest is now %d.", company, lowest.getAmount(), lowest.getInterestRate() ) );
+        this.sendReply( investor, String.format( "Your bidding for company %d was invalidated, lowest is now %d, %f.", company, lowest.getAmount(), lowest.getInterestRate() ) );
     }
 
     @Override
-    public void auctionClosed ( int company, List< AuctionBidding > biddings ) {
-        if ( biddings != null && biddings.size() > 0 ) {
+    public void auctionClosed ( int company, boolean success, List< AuctionBidding > biddings ) {
+        if ( success ) {
             this.publish( company, "Auction closed with enough biddings." );
+
+            for ( AuctionBidding bidding : biddings ) {
+                this.sendReply( bidding.getInvestor(), String.format( "Auction closed successfully at company %d. Your bidding of %d at %f was approved.", company, bidding.getAmount(), bidding.getInterestRate() ) );
+            }
         } else {
             this.publish( company, "Auction closed without enough biddings." );
+
+            for ( AuctionBidding bidding : biddings ) {
+                this.sendReply( bidding.getInvestor(), String.format( "Auction closed unsuccessfully at company %d. Your bidding of %d at %f was invalidated.", company, bidding.getAmount(), bidding.getInterestRate() ) );
+            }
         }
     }
 
@@ -117,7 +126,7 @@ public class ZMQExchangeController implements ExchangeController {
         // Each company can only have at most one auction or one emission running at each moment in time
         // So we check which one is running right now and act accordingly
         if ( this.exchange.hasAuctionFor( company ) ) {
-            this.exchange.bidAuction( company, investor, amount, message.getRate() );
+            this.exchange.bidAuction( company, investor, amount, ( double ) message.getRate() );
         } else if ( this.exchange.hasEmissionFor( company ) ) {
             this.exchange.subscribeEmission( company, investor, amount );
         } else {
@@ -147,7 +156,7 @@ public class ZMQExchangeController implements ExchangeController {
         // Here we create a poller that allows us to listen to more than one socket at a time
         // The first socket receives messages from the erlang frontend
         // The second one notifies us when an auction/emission is ready to be closed
-        ZMQ.Poller poller = this.context.poller( 1 );
+        ZMQ.Poller poller = this.context.poller( 2 );
 
         poller.register( this.pullSocket, ZMQ.Poller.POLLIN );
         poller.register( this.schedulerSocket, ZMQ.Poller.POLLIN );
@@ -191,7 +200,7 @@ public class ZMQExchangeController implements ExchangeController {
             // We check if the 1-indexed socket (schedulerSocket) has any incoming messages
             // If so, we read the company id and close the auction
             if ( poller.pollin( 1 ) ) {
-                byte[] bytes = pullSocket.recv( ZMQ.DONTWAIT );
+                byte[] bytes = schedulerSocket.recv( ZMQ.DONTWAIT );
 
                 int company = byteArrayToInt( bytes );
 

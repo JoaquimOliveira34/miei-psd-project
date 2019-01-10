@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 interface ExchangeController {
     void auctionCreated ( Auction auction );
 
-    void auctionClosed ( int company, List< AuctionBidding > biddings );
+    void auctionClosed ( int company, boolean success, List< AuctionBidding > biddings );
 
     void auctionBiddingInvalidated ( int company, int investor, AuctionBidding lowest );
 
@@ -154,15 +154,15 @@ public class Exchange {
 
         Auction auction = this.auctions.get( company );
 
-        List< AuctionBidding > accepted = auction.close();
+        boolean success = auction.close();
 
-        this.directory.closeAuction( auction, accepted );
+        this.directory.closeAuction( auction, success ? auction.getBiddings() : null );
 
         this.auctions.remove( company );
 
         if ( this.controller != null ) {
             synchronized ( this.controller ) {
-                this.controller.auctionClosed( company, accepted );
+                this.controller.auctionClosed( company, success, auction.getBiddings() );
             }
         }
     }
