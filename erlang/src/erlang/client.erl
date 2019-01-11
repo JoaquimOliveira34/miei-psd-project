@@ -8,107 +8,113 @@
 -export([init/1]).
 
 
-init( Context ) ->
+init( Port ) ->
+      
+    {ok, LSock} = gen_tcp:listen( Port, [binary, {packet, line}, {reuseaddr, true}]),
     
-    {ok, XrepSocket } = erlzmq:socket(Context, xrep),
-
-    ok = erlzmq:bind( XrepSocket, "tcp://*:12345" ),
-
-    receiver( XrepSocket, #{} ).
+    acceptor(LSock).
 
 
-%% Map  Addres => Client (pid)
-receiver( XrepSocket, Map ) ->
+acceptor( LSock ) ->
+
+    {ok, Sock} = gen_tcp:accept( LSock ),
     
-    {Addr, Bottom, Body} = receiveMessage( XrepSocket ),
-
-    case maps:get( Addr, Map, none ) of
-
-        none ->    
-            Pid = spawn( fun() -> client( XrepSocket, Addr ) end ),
-            Pid ! {msg, Bottom, Body},
-            receiver( XrepSocket, maps:put( Addr, Pid, Map) );        
+    spawn( fun() -> acceptor( LSock ) end),
         
-        Pid ->
-            Pid ! {msg, Bottom, Body},
-            receiver( XrepSocket, Map)
-    
-    end.
-    
+    client( Sock ).
 
-%% Client to do Authentication process
-client( XrepSocket, MyAddr ) -> 
+
+client( Sock ) ->
     receive 
-        {msg, Bottom, Bin} ->
-            
-            case  makeLogin( translater:decode_Authentication( Bin ) ) of 
-                
-                ok -> 
-                    sendMessage( XrepSocket, MyAddr,Bottom, translater:encode_Reply(true) ),
-                    client( XrepSocket, MyAddr);
-                
-                error -> 
-                    sendMessage( XrepSocket, MyAddr,Bottom, translater:encode_Reply(false) ),
-                    client( XrepSocket, MyAddr);
-                
-                {ok, Id, Type} ->
-                    sendMessage( XrepSocket, MyAddr,Bottom, translater:encode_Reply(true, Type) ),
-                    client( XrepSocket, MyAddr, Id, Type)
-            end
+        { tcp, _ , Bin } ->
+            case makeLogin( Bin) of 
+                {Reply, Id, Type} ->
+                    gen_tcp:send(Sock, Reply),
+                    exchanges:login(Id),
+                    client( Sock, Id, Type);
+    
+                 Reply -> 
+                     gen_tcp:send(Sock, Reply),
+                     client( Sock )
+            end;
+                    
+        { tcp_closed, _ }  -> ok ;
+    
+        { tcp_error, _, _} -> ok
+    
     end.
 
+    
 
 %% Authenticated client to do send messages to exchanges 
-client( XrepSocket, MyAddr, MyId, company ) ->
+client( Sock, Id, company ) ->
     receive 
-        { msg,Bottom, Bin} ->
-            Msg = translater:decode_MsgCompany( Bin ),
-            Msg2 = translater:setIdMsgCompany( Msg, MyId),
-            Bin2= translater:encode_MsgExchange( company, Msg2),
-            exchanges:send( Bin2,Bottom, MyId );
-            
-        {reply, Bottom, Bin} -> 
-            sendMessage( XrepSocket, MyAddr, Bottom, Bin)
-    end,
-    client( XrepSocket, MyAddr, MyId, company);
+        { tcp, _ , Bin } ->
+            Received = translater:decode_MsgCompany( Bin ),
+            WithId = translater:setIdMsgCompany( Received, Id),
+            BinToExchange= translater:encode_MsgExchange( company, WithId),
+            exchanges:send( BinToExchange, Id ),
+            client( Sock, Id, company);
 
-client( XrepSocket, MyAddr, MyId, investor ) -> 
+         {reply, Bin} ->
+            gen_tcp:send( Bin ),
+            client( Sock, Id, company);             
+    
+        { tcp_closed, _ }  -> 
+            exchanges:logout(Id);
+    
+        { tcp_error, _, _} -> 
+            exchanges:logout(Id)
+    end;
+
+client( Sock, Id, investor ) -> 
     receive 
-        { msg, Bin} ->
-            Msg = translater:decode_MsgInvestor( Bin ),
-            Msg2 = translater:setIdMsgInvestor( Msg, MyId),
-            CompanyId = translater:getCompanyMsgInvestor( Msg2),
-            Bin2= translater:encode_MsgExchange( investor, Msg2),
-            exchanges:send( Bin2, CompanyId );
+        { tcp, _ , Bin } ->
+            Received = translater:decode_MsgInvestor( Bin ),
+            WithId = translater:setIdMsgInvestor( Received, Id),
+            TargetCompanyId = translater:getCompanyMsgInvestor( WithId),
+            BinToExchange= translater:encode_MsgExchange( investor, WithId),
+            exchanges:send( BinToExchange, TargetCompanyId ),
+            client( Sock, Id, investor);
 
-        {reply, Bottom, Bin} -> 
-            sendMessage( XrepSocket, MyAddr,Bottom, Bin)
-    end,
-    client( XrepSocket, MyAddr, MyId, investor).
-
-%% return error | ok | {ok, Id, Type}
-makeLogin( {Type, User, Name, Pass} ) ->
-
-    case Type of    
-
-        'REGISTER' ->
-            accounts:create_account( Name, Pass, User);
-        'LOGIN' ->
-            accounts:verify( Name, Pass)
+         {reply, Bin} ->
+            gen_tcp:send( Bin ),
+            client( Sock, Id, investor);             
+    
+        { tcp_closed, _ }  -> 
+            exchanges:logout(Id);
+    
+        { tcp_error, _, _} -> 
+            exchanges:logout(Id)
     end.
+
+
+%%  Authentication process 
+%% @param Bin  binary message with Authentication info
+%% @return  :: Binary | { Binnary, Id, Type } if the user is authenticated 
+makeLogin( Bin ) -> 
+    
+    {Type, User, Name, Pass} = translater:decode_Authentication( Bin ),
+
+    
+    case Type of    
+        
+        'REGISTER' -> Result = accounts:create_account( Name, Pass, User);
+        
+        'LOGIN' -> Result = accounts:verify( Name, Pass)
+    end,
+
+    case Result of 
+    
+        ok -> 
+            translater:encode_Reply( result, "Conta criada com sucesso");
             
+        error -> 
+            translater:encode_Reply( error, "Credenciais invalidas.");
 
-%% return ok                  
-sendMessage(Socket, Addr, Bottom, Bin  ) ->
-    ok = erlzmq:send( Socket, Addr, [sndmore]),
-    ok = erlzmq:send( Socket, Bottom, [sndmore]),
-    ok = erlzmq:send( Socket, Bin).
+        {ok, Id, Type} ->
+            { translater:encode_Reply(result, "Login valido. Bem vindo"), Id, Type }
+    end.
 
-%% return { Addr, Body}
-receiveMessage( Socket ) ->
-     
-    {ok, Addr} = erlzmq:recv( Socket ),
-    {ok, Bottom} = erlzmq:recv( Socket ),
-    {ok, Body} = erlzmq:recv( Socket ),
-    { Addr, Bottom, Body}.
-
+    
+    

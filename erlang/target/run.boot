@@ -16,6 +16,7 @@ code:load_abs('main').
 code:load_abs('translater').
 code:load_abs('accounts').
 code:load_abs('exchanges').
+code:load_abs('rest').
 
 %%  RUN %%
 

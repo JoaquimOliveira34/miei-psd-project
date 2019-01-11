@@ -1,16 +1,18 @@
-
 -module(translater).
 
 -include("../protos.hrl"). 
 
 
 %% API
--export( [decode_Authentication/1, decode_MsgInvestor/1, decode_MsgCompany/1,
+-export( [decode_Authentication/1, decode_MsgInvestor/1, decode_MsgCompany/1,decode_ServerResponse/1,
           encode_Reply/1, encode_Reply/2,encode_MsgExchange/2,
-          setIdMsgInvestor/2, setIdMsgCompany/2, getCompanyMsgInvestor/1] ).
+          setIdMsgInvestor/2, setIdMsgCompany/2, getCompanyMsgInvestor/1, getIdServerResponse/1] ).
+
+
 
 
 %%%%%%%%%% RECORDS %%%%%%%%%%
+
 % Return record
 setIdMsgInvestor( Record, Value) ->
     Record#'MsgInvestor'{ investorId = Value }.
@@ -23,7 +25,17 @@ setIdMsgCompany( Record, Value) ->
 getCompanyMsgInvestor( Record) -> 
     Record#'MsgInvestor'.company.
 
+getIdServerResponse( Record ) ->
+    Record#'ServerResponse'.userId.
+
+
+
+
+
 %%%%%%%%%% DECODE %%%%%%%%%%
+%return record
+decode_ServerResponse( Bin) ->
+    proto:decode_ServerResponse( Bin, 'ServerResponse').
 
 %return record   
 decode_MsgInvestor( Bin ) ->
@@ -43,15 +55,18 @@ decode_Authentication( Bin ) ->
         Msg#'Authentication'.password
     }.
 
+
+
+
+
 %%%%%%%%%% ENCODE %%%%%%%%%%
 
 %return Bin
-encode_Reply( Bool ) ->
-    protos:encode_msg( #'ServerResponse'{ response = Bool } ).
-
+encode_Reply( error, Message ) ->
+    protos:encode_msg( #'ServerResponse'{ userId = -1, error = Message } );
 %return Bin
-encode_Reply( Bool, Message ) ->
-    protos:encode_msg( #'ServerResponse'{ response = Bool, error = Message } ).
+encode_Reply( response, Message ) ->
+    protos:encode_msg( #'ServerResponse'{ userId = -1, response = Message } ).
 
 %return Bin
 encode_MsgExchange( investor, MsgInvestor) ->

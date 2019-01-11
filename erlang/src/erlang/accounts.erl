@@ -6,16 +6,15 @@
 
 init()->
 
-    % devo perguntar ao diretorio quais sao as contas existentes
-    
-    Pid = spawn( fun() -> accounts( #{ "quim"  => { 1, "pass", investor },
-                                       "pedro" => { 2, "pass", company}
-                                    }, 3) end),
+    Users = rest:getUsers(),
+
+    Pid = spawn( fun() -> accounts(  Users , length( maps:keys(Users) )) end),
+
     register( accounts , Pid).
 
 
 %Users = #{ quim => {id, pass, investor}, pedro => {id, pass2,investor} , ...}
-accounts( Map, NextId)->
+accounts( Map, NextId )->
 
     receive
         { verify , Username, Passwd, Pid } ->
