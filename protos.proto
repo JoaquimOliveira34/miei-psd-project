@@ -1,8 +1,9 @@
 syntax = "proto2";
 
-message ServerResponse{
-    required bool response = 1 ;
-    optional string error = 2;
+message ServerResponse {
+    required int32 userId = 1;
+    optional string response = 2;
+    optional string error = 3;
 }
 
 message Authentication{
