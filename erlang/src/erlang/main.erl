@@ -9,8 +9,9 @@ main() ->
 
     accounts:init(),
 
-    client:init( "12345" ),
+    exchanges:init( ["11101","11102"], "9999"),
+    
+    client:init( 12345 ),
 
-    exchanges:init( ["11101","11102"]),
     
     ok.

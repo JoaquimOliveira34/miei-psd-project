@@ -10,7 +10,7 @@
 
 init( Port ) ->
       
-    {ok, LSock} = gen_tcp:listen( Port, [binary, {packet, line}, {reuseaddr, true}]),
+    {ok, LSock} = gen_tcp:listen( Port, [binary, {active, true}]),
     
     acceptor(LSock).
 
@@ -18,29 +18,32 @@ init( Port ) ->
 acceptor( LSock ) ->
 
     {ok, Sock} = gen_tcp:accept( LSock ),
+
+    spawn( fun() ->acceptor( LSock ) end),
     
-    spawn( fun() -> acceptor( LSock ) end),
-        
-    client( Sock ).
+    io:format("New client\n"),
+    
+    client( Sock ).        
 
 
 client( Sock ) ->
     receive 
         { tcp, _ , Bin } ->
+            io:format("Received msg\n"),
             case makeLogin( Bin) of 
                 {Reply, Id, Type} ->
-                    gen_tcp:send(Sock, Reply),
+                    tcpSend( Sock, Reply),
                     exchanges:login(Id),
                     client( Sock, Id, Type);
     
                  Reply -> 
-                     gen_tcp:send(Sock, Reply),
-                     client( Sock )
+                    tcpSend( Sock, Reply),
+                    client( Sock )
             end;
                     
-        { tcp_closed, _ }  -> ok ;
+        { tcp_closed, _ }  -> io:format("Closed\n"), ok ;
     
-        { tcp_error, _, _} -> ok
+        { tcp_error, _, _} -> io:format("Closed\n"), ok
     
     end.
 
@@ -48,6 +51,7 @@ client( Sock ) ->
 
 %% Authenticated client to do send messages to exchanges 
 client( Sock, Id, company ) ->
+    io:format("Login completed"),
     receive 
         { tcp, _ , Bin } ->
             Received = translater:decode_MsgCompany( Bin ),
@@ -106,15 +110,22 @@ makeLogin( Bin ) ->
 
     case Result of 
     
+        {ok, Id, UserType} ->
+            { translater:encode_Reply( response, "Login valido. Bem vindo"), Id, UserType };
+
         ok -> 
-            translater:encode_Reply( result, "Conta criada com sucesso");
+            translater:encode_Reply( response, "Conta criada com sucesso");
             
         error -> 
-            translater:encode_Reply( error, "Credenciais invalidas.");
+            translater:encode_Reply( error, "Credenciais invalidas.")
 
-        {ok, Id, Type} ->
-            { translater:encode_Reply(result, "Login valido. Bem vindo"), Id, Type }
     end.
 
     
+tcpSend( Sock, Bin ) -> 
+    Size = length( binary_to_list(Bin) ),
+    SizeMsg = translater:encode_IntMessage(Size),
+    io:format("Send [~w]+ ~w bytes\n",  [length( binary_to_list((SizeMsg))),Size]),
+    gen_tcp:send( Sock, SizeMsg),
+    gen_tcp:send( Sock, Bin).
     

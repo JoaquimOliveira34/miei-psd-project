@@ -33,9 +33,9 @@ accounts( Map, NextId )->
                     Pid ! error;
                 false ->
                     Pid ! ok,
-                    Map = (maps:put( Username ,{ NextId, Passwd, Type} , Map) ),
-                    % enviar informaçao para o diretorio!!!
-                    accounts(Map, NextId + 1)
+                    NewMap = (maps:put( Username ,{ NextId, Passwd, Type} , Map) ),
+                    rest:registerUser( Username, Passwd, Type, NextId),
+                    accounts(NewMap, NextId + 1)
             end
     end,
     accounts(Map, NextId).

@@ -5,7 +5,7 @@
 
 %% API
 -export( [decode_Authentication/1, decode_MsgInvestor/1, decode_MsgCompany/1,decode_ServerResponse/1,
-          encode_Reply/1, encode_Reply/2,encode_MsgExchange/2,
+          encode_Reply/2,encode_MsgExchange/2,encode_IntMessage/1,
           setIdMsgInvestor/2, setIdMsgCompany/2, getCompanyMsgInvestor/1, getIdServerResponse/1] ).
 
 
@@ -73,9 +73,15 @@ encode_MsgExchange( investor, MsgInvestor) ->
      Msg = #'MsgExchange'{ type = 'INVESTOR', investor = MsgInvestor },
      protos:encode_msg( Msg);
 
+%return Bin
 encode_MsgExchange( company, MsgCompany) ->
      Msg = #'MsgExchange'{ type = 'COMPANY', company = MsgCompany },
      protos:encode_msg( Msg).
+
+%return Bin
+encode_IntMessage( Int)->
+    Msg =  #'IntMessage'{ value = Int},
+    protos:encode_msg( Msg).
 
     
     

@@ -1,6 +1,8 @@
 
 -module(exchanges).
 
+-include("../erlzmq.hrl"). 
+
 %% API
 -export( [init/2, send/2, login/1, logout/1 ]).
 
@@ -10,16 +12,18 @@
 init( Ports, PullPort) ->
 
     {ok, Context} = erlzmq:context(),
-    
+    {ok, PullSocket } = erlzmq:socket( Context, [pull, {active, false}]),
+
+    {ok, PP } = erlzmq:socket( Context, [push, {active, false}]),
+
+    Address = string:concat( "tcp://*:" , PullPort),
+    ok = erlzmq:bind( PullSocket,  Address), 
+
     Pids = createExchanges( Ports, Context ),
-    
     register( exchangesPids, spawn( fun() -> exchangesPids( Pids ) end) ),
-
-    {ok, PullSocket } = erlzmq:socket( Context, pull),
-
-    ok = erlzmq:bind( PullSocket, "tcp://*:" ++ PullPort ), 
-
-    register( receiver,  spawn( fun() -> receiver( PullSocket, #{}) end) ).
+    
+    register( receiver,  spawn( fun() -> receiver( PullSocket, #{} ) end) ),
+    io:format("Exchanges running...").
 
 
 %% @param PullSocket Socket por onde vamos receber mensagens
@@ -33,7 +37,7 @@ receiver( PullSocket, Map ) ->
             receiver( PullSocket, maps:remove(Id, Map))
         
         after 0 ->
-            Bin = zmq:recv( PullSocket),
+            Bin = erlzmq:recv( PullSocket),
             Id = translater:getIdServerResponse( translater:decode_ServerResponse(Bin) ),
             case maps:get( Id, Map, error) of 
                 error -> 
@@ -70,19 +74,21 @@ exchange( PushSocket ) ->
 
 
 
-createExchanges( Pids, Context ) -> createExchanges( Pids, Context, [] ).
+createExchanges( Ports, Context ) -> createExchanges( Ports, Context, [] ).
 
 createExchanges( [],  _ , Pids) -> Pids;
 
 createExchanges( [ Port | Tail ], Context, Pids ) ->
     
-    {ok, PushSocket } = erlzmq:socket( Context, push),
+    {ok, PushSocket } = erlzmq:socket( Context, [push, {active, false}]),
 
-    ok = erlzmq:coonect( PushSocket, "tcp://localhost:" ++ Port ),
+    Address = "tcp://localhost:" ++ Port,
+
+    ok = erlzmq:connect( PushSocket, Address ),
 
     Pid = spawn( fun() -> exchange( PushSocket ) end),
 
-    createExchanges( Tail , [ Pid | Pids] ).
+    createExchanges( Tail , Context, [ Pid | Pids] ).
 
 %% return Pid 
 getExchange( List , Company ) ->
@@ -96,12 +102,15 @@ getExchange( List , Company ) ->
 
 %% Return void
 send( Bin, Company ) -> 
-    exchangesPids ! { send, Bin, Company }.
+    exchangesPids ! { send, Bin, Company },
+    ok.
 
 %% Return void
 login( Id )->
-    receiver ! {login, Id, self() }.
+    receiver ! { login, Id, self() },
+    ok.
 
 %% Return void
 logout( Id) ->
-    receiver ! {logout, Id}.
+    receiver ! {logout, Id},
+    ok.

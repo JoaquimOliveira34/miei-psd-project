@@ -63,4 +63,11 @@
         }).
 -endif.
 
+-ifndef('INTMESSAGE_PB_H').
+-define('INTMESSAGE_PB_H', true).
+-record('IntMessage',
+        {value                  :: integer()        % = 1, 32 bits
+        }).
+-endif.
+
 -endif.

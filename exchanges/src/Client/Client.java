@@ -1,11 +1,11 @@
 package Client;
 
 import Exchanges.Protos;
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.zeromq.ZMQ;
 
 import java.io.IOException;
 import java.util.Scanner;
+
 
 public class Client {
 
@@ -19,31 +19,32 @@ public class Client {
     private static final Menu menuInvestors =  new Menu( new String[]   { "Licitar", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões"});
     private static final Menu menuCompanys = new Menu( new String[]     { "Criar leila", "Criar leilao com taxa fixa", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões"});
 
-    private final ZMQ.Socket socketReq;
     private final ZMQ.Socket socketSub ;
 
     private final Scanner s;
 
     private State state;
 
-    Client( String erlangAddress, String proxyAddress) throws IOException {
+    private Middleware middleware;
+
+    Client( int serverAddress, int  proxyAddress) throws IOException {
 
         /////////////////// Initiations  ///////////////////
 
         s = new Scanner( System.in);
+
         ZMQ.Context context = ZMQ.context(1);
-
-        socketReq= context.socket(ZMQ.REQ);
-        socketReq.connect("tcp://"+ erlangAddress );
-
         socketSub = context.socket( ZMQ.SUB );
-        socketSub.connect( "tcp://"+ proxyAddress );
+        //socketSub.connect( "tcp://localhost:+ proxyAddress );
 
         state = State.NONE;
 
-        /////////////////// Start ///////////////////
+        this.middleware = new Middleware( serverAddress );
 
-        while( true ) {
+        /////////////////// Start ///////////////////
+        boolean flag = true ;
+
+        while( flag ) {
 
             switch ( state ){
                 case NONE:
@@ -56,8 +57,9 @@ public class Client {
                     showMenuInvestors();
                     break;
             }
-
         }
+
+        middleware.close();
     }
 
     private void showMenuInvestors() {
@@ -169,7 +171,7 @@ public class Client {
     }
 
 
-    private void createAccount() throws InvalidProtocolBufferException {
+    private void createAccount() throws IOException {
 
         Protos.Authentication.UserType type;
 
@@ -182,59 +184,48 @@ public class Client {
             type = Protos.Authentication.UserType.COMPANY;
 
         System.out.print("Nome de utilizador: ");
-        String name = s.nextLine();
+        String username = s.nextLine();
 
         System.out.print("Palavra passe: ");
         String password = s.nextLine();
 
+        middleware.sendAuthentication( type, Protos.Authentication.CredentialsType.REGISTER, username, password);
 
-        Protos.Authentication.Builder authBuilder = Protos.Authentication.newBuilder();
+        Protos.ServerResponse response = middleware.receiveMsg();
 
-        Protos.Authentication auth = authBuilder.setCredentialsType(Protos.Authentication.CredentialsType.REGISTER)
-                .setPassword(password)
-                .setUsername(name)
-                .setUserType(type)
-                .build();
-
-        socketReq.send(auth.toByteArray());
-
-        byte[] ba = socketReq.recv();
-
-        Protos.ServerResponse response = Protos.ServerResponse.parseFrom(ba);
-
-        if ( response.getResponse() )
+        if ( response.hasError() )
             System.out.println("Invalido, tente novamente.");
         else
             System.out.println("Conta criada com sucesso. ");
     }
 
     private void makeLogin() throws IOException {
+        System.out.print("Investidor ( 1 )  Empresa ( 2 ): ");
+        char option = s.nextLine().charAt(0);
+        Protos.Authentication.UserType type;
+        if( option == '1')
+            type = Protos.Authentication.UserType.INVESTOR;
+        else
+            type = Protos.Authentication.UserType.COMPANY;
 
-        System.out.print("Enter your username: ");
-        String name = s.nextLine();
+        System.out.print("Nome de utilizador: ");
+        String username = s.nextLine();
 
-        System.out.print("Enter your password: ");
+        System.out.print("Palavra passe : ");
         String password = s.nextLine();
 
-        Protos.Authentication.Builder authBuilder = Protos.Authentication.newBuilder();
+        middleware.sendAuthentication(type, Protos.Authentication.CredentialsType.LOGIN, username,password);
 
-        Protos.Authentication auth = authBuilder.setCredentialsType(Protos.Authentication.CredentialsType.LOGIN)
-                .setPassword(password)
-                .setUsername(name)
-                .build();
+        System.out.println("Enviado");
 
-        socketReq.send( auth.toByteArray() );
+        Protos.ServerResponse response = middleware.receiveMsg();
 
-        byte[] ba = socketReq.recv();
-
-        Protos.ServerResponse response = Protos.ServerResponse.parseFrom( ba );
-
-        if( response.getResponse() )
+        if( response.hasError() )
             System.out.println("Invalido, tente novamente.");
         else {
             System.out.println("Login aceite, bem vindo. ");
 
-            if( response.getError().equals("COMPANY") )
+            if( type.equals( Protos.Authentication.UserType.COMPANY ))
                 state = State.COMPANY;
             else
                 state = State.INVESTOR;

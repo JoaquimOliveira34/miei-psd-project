@@ -66,3 +66,7 @@ message Notification{
     required int32 company = 1;
     required string message = 2;
 }
+
+message IntMessage{
+    required sfixed32 value = 1;
+}
