@@ -1,5 +1,9 @@
 syntax = "proto2";
 
+message IntMessage {
+    required sfixed32 value = 1;
+}
+
 message ServerResponse {
     required int32 userId = 1;
     optional string response = 2;
@@ -65,8 +69,4 @@ message Notification{
 
     required int32 company = 1;
     required string message = 2;
-}
-
-message IntMessage{
-    required sfixed32 value = 1;
 }
