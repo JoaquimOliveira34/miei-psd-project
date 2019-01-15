@@ -47,7 +47,7 @@ public class test {
         for (Investor i: investors.values())
             users.add(new User(i.getName(),i.getPassword(),true));
         for (Company c: companies.values())
-            users.add(new User(c.getName(),c.getPassword(),true));
+            users.add(new User(c.getName(),c.getPassword(),false));
         return users;
     }
     @GET
