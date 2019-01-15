@@ -35,10 +35,21 @@ public class test {
         this.emissions = new HashMap<>();
         this.idCounter = new AtomicInteger(0);
         this.companies.put("test",new Company(this.idCounter.incrementAndGet(),"test","password","Braga"));
+        this.companies.put("test1",new Company(this.idCounter.incrementAndGet(),"test","password","Braga"));
         this.investors.put("test",new Investor(this.idCounter.incrementAndGet(),"test","password","Braga"));
 
     }
 
+    @GET
+    @Path("/users")
+    public List<User> getUsersErlang(){
+        List<User> users = new ArrayList<>();
+        for (Investor i: investors.values())
+            users.add(new User(i.getName(),i.getPassword(),true));
+        for (Company c: companies.values())
+            users.add(new User(c.getName(),c.getPassword(),true));
+        return users;
+    }
     @GET
     @Path("/companies")
     public List<Company> getCompanies() {
