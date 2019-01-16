@@ -26,6 +26,10 @@ compile: $(SRC)
 ARGS ?= 12345 12346 12347 localhost 8080
 
 # USAGE
+# make run ARGS="<pullPort> <pushPort> <publisherPort> <directoryAddress> <directoryPort>"
 # make run ARGS="12345 12346 12347 localhost 8080"
 run:
 	java -cp "./bin/:$(LIBS)" Exchanges.Main $(ARGS)
+
+client:
+	java -cp "./bin/:$(LIBS)" Client.Main
