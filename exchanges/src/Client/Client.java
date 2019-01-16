@@ -87,7 +87,7 @@ public class Client {
         }
     }
 
-    private void showMenuCompanys() {
+    private void showMenuCompanys() throws IOException {
         System.out.println( menuCompanys.toString());
 
         switch ( menuCompanys.getOption() ){
@@ -142,11 +142,24 @@ public class Client {
 
     //////////////// Actions /////////////////
 
-    private void createFixedInterestAuction() {
+    private void createFixedInterestAuction() throws IOException {
+        System.out.print("Qual a quantidade de dinheiro a emitir: ");
+        int amount = Integer.parseInt( s.nextLine() );
 
+        System.out.print("Qual a taxa de juros do da emissao: ");
+        float rate = Float.parseFloat( s.nextLine() );
+
+        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.FIXEDRATE, amount, rate );
     }
 
-    private void createAuction() {
+    private void createAuction() throws IOException {
+        System.out.print("Qual a quantidade de dinheiro a pedir em leilao: ");
+        int amount = Integer.parseInt( s.nextLine() );
+
+        System.out.print("Qual a taxa de juros maxima do leilao: ");
+        float rate = Float.parseFloat( s.nextLine() );
+
+        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.AUCTION, amount, rate );
     }
 
 

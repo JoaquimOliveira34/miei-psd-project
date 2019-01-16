@@ -14,4 +14,6 @@ main() ->
     client:init( 12345 ),
 
     
-    ok.
+    receive
+        block -> ok
+    end.

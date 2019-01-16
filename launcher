@@ -1,5 +1,31 @@
-cd erlang; make run
-cd exchanges; make run ARGS="11101 9999 21101 localhost 8080"
-cd exchanges; make run ARGS="11102 9999 21102 localhost 8080"
-cd rest; java -jar target/Hello-1.0-SNAPSHOT.jar server config.yml
-cd client; make client
+cleanup () {
+    # A string %1 é expandida para o PID do primeiro processo interno lançado por esta script,
+    # A string %2 é expandida para o segundo, e por aí fora
+    kill %1; kill %2; kill %3;
+    # Não precisamos de fazer kill %4 pois o REST não foi iniciado em background (com o "&" no fim do comando)
+    # E como tal quando o terminal recebe CTRL+C termina esse último processo automaticamente
+
+    # Por alguma razão, matar as exchanges não chega para matar os processos que fazem bind das suas portas
+    # Portanto temos de localizá-los manualmente e terminá-los
+    lsof -n -i4TCP:11101 | grep LISTEN | awk '{ print $2 }' | xargs kill
+    lsof -n -i4TCP:11102 | grep LISTEN | awk '{ print $2 }' | xargs kill
+}
+
+# Regista a função cleanup para ser executada quando este comando receber SIGINT
+trap 'cleanup' SIGINT
+
+# Corre o erlang em background
+cd erlang
+make run | sed -e 's/^/[ERLANG] /' &
+
+# De seguida corre as exchanges em background
+cd ../exchanges
+make run ARGS="11101 9999 21101 localhost 8080" | sed -e 's/^/[EXCHANGE 1] /' & 
+make run ARGS="11102 9999 21102 localhost 8080" | sed -e 's/^/[EXCHANGE 2] /' &
+
+# Por fim corre o directório REST
+# NOTA: O comando do REST, como é o último, não pode correr em background (para a
+# o script continuar a executar no terminal) e como tal não pode ter o "&" no fim
+cd ../rest
+java -jar target/Hello-1.0-SNAPSHOT.jar server config.yml | sed -e 's/^/[REST] /'
+
