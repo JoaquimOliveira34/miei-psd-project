@@ -45,9 +45,9 @@ public class test {
     public List<User> getUsersErlang(){
         List<User> users = new ArrayList<>();
         for (Investor i: investors.values())
-            users.add(new User(i.getName(),i.getPassword(),true));
+            users.add(new User(i.getName(),i.getPassword(),i.getId(),true));
         for (Company c: companies.values())
-            users.add(new User(c.getName(),c.getPassword(),false));
+            users.add(new User(c.getName(),c.getPassword(),c.getId(),false));
         return users;
     }
     @GET

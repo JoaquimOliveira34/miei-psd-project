@@ -3,9 +3,18 @@ package rest.representations;
 public class User {
         private static String user;
         private static String password;
-        private static Boolean type;
+        private static Boolean isInvestor;
+        private static int id;
 
-        public String getUser() {
+    public static int getId() {
+        return id;
+    }
+
+    public static void setId(int id) {
+        User.id = id;
+    }
+
+    public String getUser() {
             return user;
         }
 
@@ -21,18 +30,19 @@ public class User {
             this.password = password;
         }
 
-        public Boolean getType() {
-            return type;
+        public Boolean getIsInvestor() {
+            return isInvestor;
         }
 
-        public void setType(Boolean type) {
-            this.type = type;
+        public void setIsInvestor(Boolean isInvestor) {
+            this.isInvestor = isInvestor;
         }
 
-        public User(String user, String password, Boolean type) {
+        public User(String user, String password, int id, Boolean isInvestor) {
             this.user = user;
             this.password = password;
-            this.type = type;
+            this.isInvestor = isInvestor;
+            this.id = id;
         }
 
 }
