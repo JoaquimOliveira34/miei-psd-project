@@ -80,8 +80,12 @@ public class test {
 
     @PUT
     @Path("/company/{name}")
-    public Response putCompany(@PathParam("name") String name, Company company) {
+    public Response putCompany(@PathParam("name") String name, String password, String zone) {
         synchronized (this){
+            Company c = new Company(this.idCounter.incrementAndGet(),name,password,zone);
+            this.companies.put(name, c);
+            return Response.ok(c.getId()).build();
+            /*
             if(this.companies.containsKey(company.getName())) {
                 this.companies.put(company.getName(), company);
                 return Response.status(Response.Status.OK).build();
@@ -92,6 +96,7 @@ public class test {
                 this.companies.put(name,company);
                 return Response.ok(Id).build();
             }
+            */
         }
     }
 
@@ -148,8 +153,12 @@ public class test {
 
     @PUT
     @Path("/investor/{name}")
-    public Response putInvestor(@PathParam("name") String name, Investor inv) {
+    public Response putInvestor(@PathParam("name") String name, String password, String zone) {
         synchronized (this){
+            Investor i = new Investor(this.idCounter.incrementAndGet(), name, password,zone);
+            this.investors.put(name, i);
+            return Response.ok(i.getId()).build();
+            /*
             if(this.investors.containsKey(inv.getName())) {
                 this.investors.put(inv.getName(), inv);
                 return Response.status(Response.Status.OK).build();
@@ -159,7 +168,7 @@ public class test {
                 inv.setId(Id);
                 this.investors.put(inv.getName(),inv);
                 return Response.ok(Id).build();
-            }
+            }*/
         }
     }
     @DELETE
