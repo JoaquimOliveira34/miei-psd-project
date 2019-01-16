@@ -1,0 +1,5 @@
+cd erlang; make run
+cd exchanges; make run ARGS="11101 9999 21101 localhost 8080"
+cd exchanges; make run ARGS="11102 9999 21102 localhost 8080"
+cd rest; java -jar target/Hello-1.0-SNAPSHOT.jar server config.yml
+cd client; make client
