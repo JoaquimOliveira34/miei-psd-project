@@ -1,9 +1,10 @@
 package rest.representations;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Investor {
+public class Investor implements Serializable {
     private int Id;
     private String name;
     private String password;

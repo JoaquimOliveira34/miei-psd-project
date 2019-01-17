@@ -2,6 +2,7 @@ package rest.resources;
 import rest.representations.*;
 import sun.security.provider.certpath.OCSPResponse;
 
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -12,7 +13,7 @@ import javax.ws.rs.core.Response;
 
 @Path("/peerlending")
 @Produces(MediaType.APPLICATION_JSON)
-public class test {
+public class test implements Serializable {
 
 
     private Map<String, Company> companies;
@@ -20,6 +21,12 @@ public class test {
     private Map<Integer,Auction> auctions;
     private Map<Integer,Emission> emissions;
     private AtomicInteger idCounter;
+    private ObjectOutputStream osc;
+    private ObjectOutputStream osi;
+    private ObjectOutputStream osa;
+    private ObjectOutputStream ose;
+    private ObjectOutputStream osidc;
+
     private final String templateCompanies = "Empresas registadas no sistema :\n%s";
     private final String templateAuctions = "Leiloes registados no sistema :\n%s";
     private final String templateInvestors = "Investidores registados no sistema :\n%s";
@@ -34,11 +41,101 @@ public class test {
         this.auctions = new HashMap<>();
         this.emissions = new HashMap<>();
         this.idCounter = new AtomicInteger(0);
-        this.companies.put("test",new Company(this.idCounter.incrementAndGet(),"test","password","Braga"));
-        this.companies.put("test1",new Company(this.idCounter.incrementAndGet(),"test","password","Braga"));
+        Company c1= new Company(this.idCounter.incrementAndGet(),"test","password","Braga");
+        Company c2= new Company(this.idCounter.incrementAndGet(),"test","password","Braga");
+        this.companies.put("test",c1);
+        this.companies.put("test1",c2);
         this.investors.put("test",new Investor(this.idCounter.incrementAndGet(),"test","password","Braga"));
+        try {
+            loadCompanies();
+            loadInvestors();
+            loadAuctions();
+            loadEmissions();
+            initOS();
 
+            System.out.println(this.auctions);
+        }
+        catch(Exception e){
+            System.out.println(e.getMessage());
+        }
+        //writeCompanies();
     }
+    public void initOS()throws IOException{
+        //testar appends...
+        this.osc = new ObjectOutputStream(new FileOutputStream("companies"));
+        this.osi = new ObjectOutputStream(new FileOutputStream("investors"));
+        this.osa = new ObjectOutputStream(new FileOutputStream("auctions"));
+        this.ose = new ObjectOutputStream(new FileOutputStream("emissions"));
+        this.osidc = new ObjectOutputStream(new FileOutputStream("idcounter"));
+    }
+    public void loadAuctions() throws IOException, ClassNotFoundException {
+        ObjectInputStream is = new ObjectInputStream(new FileInputStream("auctions"));
+        this.auctions = (HashMap) is.readObject();
+        is.close();
+    }
+    public void loadCompanies() throws IOException, ClassNotFoundException {
+        ObjectInputStream is = new ObjectInputStream(new FileInputStream("companies"));
+        this.companies = (HashMap) is.readObject();
+        System.out.println(this.companies.toString());
+        is.close();
+    }
+    public void loadInvestors() throws IOException, ClassNotFoundException {
+        ObjectInputStream is = new ObjectInputStream(new FileInputStream("investors"));
+        this.investors = (HashMap) is.readObject();
+        is.close();
+    }
+    public void loadEmissions() throws IOException, ClassNotFoundException {
+        ObjectInputStream is = new ObjectInputStream(new FileInputStream("emissions"));
+        this.emissions = (HashMap) is.readObject();
+        is.close();
+    }
+
+    public void loadCounter() throws IOException, ClassNotFoundException {
+        ObjectInputStream is = new ObjectInputStream(new FileInputStream("idcounter"));
+        this.auctions = (HashMap<Integer,Auction>) is.readObject();
+        is.close();
+    }
+    public void writeCompanies(){
+        try {
+            osc.writeObject(companies);
+            osc.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void writeInvestors(){
+        try {
+            osi.writeObject(investors);
+            osi.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void writeEmissions(){
+        try {
+            ose.writeObject(emissions);
+            ose.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void writeAuctions(){
+        try {
+            osa.writeObject(auctions);
+            osa.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public void writeCounter(){
+        try {
+            osa.writeObject(idCounter.get());
+            osa.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     @GET
     @Path("/users")
@@ -73,6 +170,8 @@ public class test {
                 int Id = this.idCounter.incrementAndGet();
                 company.setId(Id);
                 this.companies.put(company.getName(),company);
+                writeCompanies();
+                writeCounter();
                 return Response.ok(Id).build();
             }
         }
@@ -84,6 +183,8 @@ public class test {
         synchronized (this){
             Company c = new Company(this.idCounter.incrementAndGet(),name,password,zone);
             this.companies.put(name, c);
+            writeCompanies();
+            writeCounter();
             return Response.ok(c.getId()).build();
             /*
             if(this.companies.containsKey(company.getName())) {
@@ -146,6 +247,8 @@ public class test {
                 int Id = this.idCounter.incrementAndGet();
                 inv.setId(Id);
                 this.investors.put(inv.getName(),inv);
+                writeInvestors();
+                writeCounter();
                 return Response.ok(Id).build();
             }
         }
@@ -157,6 +260,8 @@ public class test {
         synchronized (this){
             Investor i = new Investor(this.idCounter.incrementAndGet(), name, password,zone);
             this.investors.put(name, i);
+            writeInvestors();
+            writeCounter();
             return Response.ok(i.getId()).build();
             /*
             if(this.investors.containsKey(inv.getName())) {
@@ -176,6 +281,7 @@ public class test {
     public Response deleteCompany(@PathParam("name") String name) {
         if (this.companies.containsKey(name)) {
             this.companies.remove(name);
+            writeInvestors();
             return Response.ok(true).build();
         }
         else return Response.noContent().build();//verificar se n tem auction ativa
@@ -184,8 +290,9 @@ public class test {
     @DELETE
     @Path("/investor/{name}")
     public Response deleteInvestor(@PathParam("name") String name) {
-        if (this.companies.containsKey(name)) {
-            this.companies.remove(name);
+        if (this.investors.containsKey(name)) {
+            this.investors.remove(name);
+            writeInvestors();
             return Response.ok().build();
         }
         else return Response.status(Response.Status.NOT_FOUND).build();
@@ -219,7 +326,8 @@ public class test {
             auction.setId(Id);
 
             this.auctions.put(Id, auction);
-
+            writeAuctions();
+            writeCompanies();
             return Response.ok(auction).build();
         }
     }
@@ -238,7 +346,7 @@ public class test {
             return Response.ok( auction ).build();
         }
     }
-
+    /*
     @POST
     @Path("/auction/{id}")
     public Response putAuction ( @PathParam( "id" ) int Id, Auction auction ){
@@ -246,10 +354,12 @@ public class test {
             auction.setId( Id );
 
             this.auctions.put( Id, auction );
+            writeAuctions();
 
             return Response.ok(auction).build();
         }
     }
+    */
 
     /*
      * Emissions
@@ -271,6 +381,7 @@ public class test {
             emission.setId(Id);
 
             this.emissions.put(Id, emission);
+            writeEmissions();
 
             return Response.ok(emission).build();
         }
@@ -298,6 +409,7 @@ public class test {
             emission.setId( Id );
 
             this.emissions.put( Id, emission );
+            writeEmissions();
 
             return Response.ok( emission ).build();
         }

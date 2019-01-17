@@ -6,9 +6,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 
-class EmissionSubscription {
+class EmissionSubscription implements Serializable {
     private int investor;
     private int amount;
 
@@ -36,7 +37,7 @@ class EmissionSubscription {
     }
 }
 
-public class Emission {
+public class Emission implements Serializable {
     private int    id;
     private int    company;
     private int    amount;

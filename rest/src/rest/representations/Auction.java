@@ -1,9 +1,10 @@
 package rest.representations;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-class Bidding {
+class Bidding implements Serializable {
     private int investor;
     private int amount;
     private double interestRate;
@@ -42,7 +43,7 @@ class Bidding {
 }
 
 
-public class Auction{
+public class Auction implements Serializable{
     private int Id;
     private int company;
     private int amount;
