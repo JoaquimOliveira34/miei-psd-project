@@ -6,10 +6,10 @@ import com.fasterxml.jackson.databind.node.*;
 import okhttp3.*;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Spliterator;
+import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 /*
 GET /empresas
@@ -134,6 +134,42 @@ public class DirectoryClient {
         this.address = address;
         this.port = port;
         this.client = new OkHttpClient();
+        // New thread pool that starts out with 2 threads, maxs out at 16 threads before queuing tasks
+        // Each unused thread is kept alive for two seconds before being discarded
+        // And finally queued tasks are stored in an unbounded LinkedList
+        this.threadPool = new ThreadPoolExecutor( 2, 16, 2, TimeUnit.SECONDS, new LinkedBlockingQueue<>() );
+    }
+
+    @FunctionalInterface
+    interface IOSupplier<T> {
+        T get () throws IOException;
+    }
+
+    @FunctionalInterface
+    interface IORunnable {
+        void run () throws IOException;
+    }
+
+    private CompletableFuture<Void> executeAsync ( IORunnable runnable ) {
+        return this.executeAsync( () -> {
+            runnable.run();
+
+            return null;
+        } );
+    }
+
+    private <T> CompletableFuture<T> executeAsync ( IOSupplier<T> supplier ) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+
+        this.threadPool.execute( () -> {
+            try {
+                future.complete( supplier.get() );
+            } catch ( Exception e ) {
+                future.completeExceptionally( e );
+            }
+        } );
+
+        return future;
     }
 
     protected String getResourceUrl ( String... segments ) {
@@ -247,49 +283,29 @@ public class DirectoryClient {
         }
     }
 
-    //
-    // TODO This was replaced by a local history. If needed, should be brought back with the needed functionality implemented in the directory
-    //
-//    public Emission getLastEmission ( int company ) throws IOException {
-//        // TODO In the directory documentation, it is only possible to retrieve a company by name, but here
-//        // we only have the id so far. Might need to be updated
-//        String url = this.getResourceUrl( "empresa", Integer.toString( company ), "emissoes" );
-//
-//        Request request = new Request.Builder()
-//                .url( url ).get().build();
-//
-//        try ( Response response = client.newCall( request ).execute() ) {
-//            List< Emission > emissions = Emission.listFromJSON( response.body().string() );
-//
-//            if ( emissions.size() == 0 ) {
-//                return null;
-//            }
-//
-//            return emissions.get( emissions.size() - 1 );
-//        }
-//    }
-//
-//    public Auction getLastAuction ( int company ) throws IOException {
-//        // TODO In the directory documentation, it is only possible to retrieve a company by name, but here
-//        // we only have the id so far. Might need to be updated
-//        String url = this.getResourceUrl( "empresa", Integer.toString( company ), "leiloes" );
-//
-//        Request request = new Request.Builder()
-//                .url( url ).get().build();
-//
-//        try ( Response response = client.newCall( request ).execute() ) {
-//            List< Auction > auctions = Auction.listFromJSON( response.body().string() );
-//
-//            if ( auctions.size() == 0 ) {
-//                return null;
-//            }
-//
-//            return auctions.get( auctions.size() - 1 );
-//        }
-//    }
-//
-//    public List<AuctionBidding> getAuctionBiddings ( int id ) {
-//        // TODO
-//        return null;
-//    }
+
+    // ASYNC METHODS
+    public CompletableFuture<Auction> createAuctionAsync ( Auction auction ) {
+        return this.createAuctionAsync( auction.getCompany(), auction.getAmount(), auction.getMaxInterestRate() );
+    }
+
+    public CompletableFuture<Auction> createAuctionAsync ( final int company, final int amount, final double maxInterestRate ) {
+        return this.executeAsync( () -> this.createAuction( company, amount, maxInterestRate ) );
+    }
+
+    public CompletableFuture<Void> closeAuctionAsync ( Auction auction, List< AuctionBidding > biddings ) {
+        return this.executeAsync( () -> this.closeAuction( auction, biddings ) );
+    }
+
+    public CompletableFuture<Emission> createEmissionAsync ( Emission emission ) {
+        return this.createEmissionAsync( emission.getCompany(), emission.getAmount(), emission.getInterestRate() );
+    }
+
+    public CompletableFuture<Emission> createEmissionAsync ( final int company, final int amount, final double interestRate ) {
+        return this.executeAsync( () -> this.createEmission( company, amount, interestRate ) );
+    }
+
+    public CompletableFuture<Void> closeEmissionAsync ( Emission emission, List< EmissionSubscription > subscribed ) {
+        return this.executeAsync( () -> this.closeEmission( emission, subscribed ) );
+    }
 }

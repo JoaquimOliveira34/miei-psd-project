@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -46,9 +47,9 @@ public class Exchange {
     // The history HashMap stores the last event (either auction or emission) for each company
     private Map< Integer, Either< Auction, Emission > > history   = new HashMap<>();
     // The auctions HashMap contains the current (if any) auction for each company
-    private Map< Integer, Auction >                     auctions  = new HashMap<>();
+    private Map< Integer, Auction >                     auctions  = new ConcurrentHashMap<>();
     // The emissions HashMap contains the current (if any) emission for each company
-    private Map< Integer, Emission >                    emissions = new HashMap<>();
+    private Map< Integer, Emission >                    emissions = new ConcurrentHashMap<>();
     // Each company can only have either an emission or an auction running at a time; not both
 
     private DirectoryClient directory;
@@ -109,22 +110,17 @@ public class Exchange {
 
         Auction auction = new Auction( company, amount, maxInterestRate );
 
-        try {
-            // The new Auction object is the one returned from the Directory after being created
-            // And so already has the correct auction id
-            auction = this.directory.createAuction( auction );
-        } catch ( IOException exception ) {
-            exception.printStackTrace();
-
-            throw new ExchangeException( ExchangeExceptionType.DirectoryError );
-        }
-
-
-        this.scheduler.schedule( new ExchangeCloseRunnable( this.controller, company ), this.durationTime, this.durationUnits );
+        this.auctions.put( company, auction );
 
         this.history.put( company, Either.left( auction ) );
 
-        this.auctions.put( company, auction );
+        // The new Auction object is the one returned from the Directory after being created
+        // And so already has the correct auction id
+        this.directory.createAuctionAsync( auction ).thenAccept( newAuction -> {
+            this.auctions.get( newAuction.getCompany() ).setId( newAuction.getId() );
+        } );
+
+        this.scheduler.schedule( new ExchangeCloseRunnable( this.controller, company ), this.durationTime, this.durationUnits );
 
         if ( this.controller != null ) {
             synchronized ( this.controller ) {
@@ -156,7 +152,7 @@ public class Exchange {
 
         boolean success = auction.close();
 
-        this.directory.closeAuction( auction, success ? auction.getBiddings() : null );
+        this.directory.closeAuctionAsync( auction, success ? auction.getBiddings() : null );
 
         this.auctions.remove( company );
 
@@ -226,21 +222,17 @@ public class Exchange {
 
         Emission emission = new Emission( company, amount, maxInterestRate );
 
-        try {
-            // The new Emission object is the one returned from the Directory after being created
-            // And so already has the correct emission id
-            emission = this.directory.createEmission( emission );
-        } catch ( IOException exception ) {
-            exception.printStackTrace();
-
-            throw new ExchangeException( ExchangeExceptionType.DirectoryError );
-        }
-
-        this.scheduler.schedule( new ExchangeCloseRunnable( this.controller, company ), this.durationTime, this.durationUnits );
+        this.emissions.put( company, emission );
 
         this.history.put( company, Either.right( emission ) );
 
-        this.emissions.put( company, emission );
+        // The new Emission object is the one returned from the Directory after being created
+        // And so already has the correct emission id
+        this.directory.createEmissionAsync( emission ).thenAccept( newEmission -> {
+            this.emissions.get( newEmission.getCompany() ).setId( newEmission.getId() );
+        } );
+
+        this.scheduler.schedule( new ExchangeCloseRunnable( this.controller, company ), this.durationTime, this.durationUnits );
 
         if ( this.controller != null ) {
             synchronized ( this.controller ) {
@@ -268,7 +260,7 @@ public class Exchange {
 
         List< EmissionSubscription > subscribed = emission.close();
 
-        this.directory.closeEmission( emission, subscribed );
+        this.directory.closeEmissionAsync( emission, subscribed );
 
         this.emissions.remove( company );
 

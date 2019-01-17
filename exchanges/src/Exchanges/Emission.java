@@ -52,11 +52,15 @@ public class Emission {
     }
 
     public int getId () {
-        return this.id;
+        synchronized ( this ) {
+            return this.id;
+        }
     }
 
     public void setId ( int id ) {
-        this.id = id;
+        synchronized ( this ) {
+            this.id = id;
+        }
     }
 
     public int getCompany () {

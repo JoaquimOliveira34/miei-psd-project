@@ -45,7 +45,7 @@ public class ZMQExchangeController implements ExchangeController {
 
         this.publisherPort = publisherPort;
 
-
+        
         this.pullSocket.bind( "tcp://localhost:" + Integer.toString( pullPort ) );
 
         this.pushSocket.connect( "tcp://localhost:" + Integer.toString( pushPort ) );
