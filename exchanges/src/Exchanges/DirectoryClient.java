@@ -129,6 +129,7 @@ public class DirectoryClient {
     private int          port;
     private String       address;
     private OkHttpClient client;
+    private ExecutorService threadPool;
 
     public DirectoryClient ( String address, int port ) {
         this.address = address;
@@ -214,12 +215,12 @@ public class DirectoryClient {
                 .add( "company", auction.getCompany() )
                 .add( "amount", auction.getAmount() )
                 .add( "maxInterestRate", auction.getMaxInterestRate() )
-                .add( "accepted", biddings )
+                .add( "biddings", biddings )
                 .build();
 
         Request request = new Request.Builder()
                 .url( url )
-                .post( requestBody )
+                .put( requestBody )
                 .build();
 
         try {
@@ -261,7 +262,7 @@ public class DirectoryClient {
         return this.createEmission( emission.getCompany(), emission.getAmount(), emission.getInterestRate() );
     }
 
-    public void closeEmission ( Emission emission, List<EmissionSubscription> subscribed ) {
+    public void closeEmission ( Emission emission, List< EmissionSubscription > subscribed ) {
         String url = this.getResourceUrl( "emission", Integer.toString( emission.getId() ) );
 
         RequestBody requestBody = new JsonBuilder()
@@ -273,7 +274,7 @@ public class DirectoryClient {
 
         Request request = new Request.Builder()
                 .url( url )
-                .post( requestBody )
+                .put( requestBody )
                 .build();
 
         try {

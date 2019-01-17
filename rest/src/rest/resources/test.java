@@ -1,19 +1,66 @@
 package rest.resources;
-import rest.representations.*;
-import sun.security.provider.certpath.OCSPResponse;
 
-import java.io.*;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import rest.representations.*;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Path("/peerlending")
 @Produces(MediaType.APPLICATION_JSON)
 public class test implements Serializable {
+    public static class ResourcesStorage<T> {
+        private String name;
+
+        public ResourcesStorage ( String name ) {
+            this.name = name;
+        }
+
+        public void write ( T value ) {
+            File file = new File( name );
+
+            if ( file.exists() ) {
+                file.delete();
+            }
+
+            try {
+                file.createNewFile();
+
+                try ( ObjectOutputStream os = new ObjectOutputStream( new FileOutputStream( file ) ) ) {
+                    os.writeObject( value );
+
+                    os.flush();
+                }
+            } catch ( Exception e ) {
+                e.printStackTrace();
+            }
+        }
+
+        public Optional<T> load () {
+            File file = new File( name );
+
+            if ( !file.exists() ) {
+                return Optional.empty();
+            }
+
+            try {
+                ObjectInputStream is = new ObjectInputStream( new FileInputStream( file ) );
+
+                try {
+                    return Optional.of( ( T ) is.readObject() );
+                } finally {
+                    is.close();
+                }
+            } catch ( Exception e ) {
+                e.printStackTrace();
+
+                return Optional.empty();
+            }
+        }
+    }
 
 
     private Map<String, Company> companies;
@@ -21,11 +68,12 @@ public class test implements Serializable {
     private Map<Integer,Auction> auctions;
     private Map<Integer,Emission> emissions;
     private AtomicInteger idCounter;
-    private ObjectOutputStream osc;
-    private ObjectOutputStream osi;
-    private ObjectOutputStream osa;
-    private ObjectOutputStream ose;
-    private ObjectOutputStream osidc;
+
+    private ResourcesStorage<Map<String, Company>> companiesStorage = new ResourcesStorage<>( "companies" );
+    private ResourcesStorage<Map<String, Investor>> investorsStorage = new ResourcesStorage<>( "investors" );
+    private ResourcesStorage<Map<Integer, Auction>> auctionsStorage = new ResourcesStorage<>( "auctions" );
+    private ResourcesStorage<Map<Integer, Emission>> emissionsStorage = new ResourcesStorage<>( "emissions" );
+    private ResourcesStorage<AtomicInteger> idCounterStorage = new ResourcesStorage<>( "idCounter" );
 
     private final String templateCompanies = "Empresas registadas no sistema :\n%s";
     private final String templateAuctions = "Leiloes registados no sistema :\n%s";
@@ -36,106 +84,37 @@ public class test implements Serializable {
     }
 
     public test(){
-        this.companies = new HashMap<>();
-        this.investors = new HashMap<>();
-        this.auctions = new HashMap<>();
-        this.emissions = new HashMap<>();
-        this.idCounter = new AtomicInteger(0);
-        Company c1= new Company(this.idCounter.incrementAndGet(),"test","password","Braga");
-        Company c2= new Company(this.idCounter.incrementAndGet(),"test","password","Braga");
-        this.companies.put("test",c1);
-        this.companies.put("test1",c2);
-        this.investors.put("test",new Investor(this.idCounter.incrementAndGet(),"test","password","Braga"));
-        try {
-            loadCompanies();
-            loadInvestors();
-            loadAuctions();
-            loadEmissions();
-            initOS();
+        this.companies = this.companiesStorage.load().orElse( new HashMap<>() );
+        this.investors = this.investorsStorage.load().orElse( new HashMap<>(  ) );
+        this.auctions = this.auctionsStorage.load().orElse( new HashMap<>(  ) );
+        this.emissions = this.emissionsStorage.load().orElse( new HashMap<>(  ) );
+        this.idCounter = this.idCounterStorage.load().orElse( new AtomicInteger( 0 ) );
 
-            System.out.println(this.auctions);
+        // INITIAL TEST DATA
+        if ( this.companies.size() == 0 ) {
+            Company c1= new Company(this.idCounter.incrementAndGet(),"test","password","Braga");
+            Company c2= new Company(this.idCounter.incrementAndGet(),"test","password","Braga");
+            this.companies.put("test",c1);
+            this.companies.put("test1",c2);
+            this.investors.put("test",new Investor(this.idCounter.incrementAndGet(),"test","password","Braga"));
         }
-        catch(Exception e){
-            System.out.println(e.getMessage());
-        }
-        //writeCompanies();
-    }
-    public void initOS()throws IOException{
-        //testar appends...
-        this.osc = new ObjectOutputStream(new FileOutputStream("companies"));
-        this.osi = new ObjectOutputStream(new FileOutputStream("investors"));
-        this.osa = new ObjectOutputStream(new FileOutputStream("auctions"));
-        this.ose = new ObjectOutputStream(new FileOutputStream("emissions"));
-        this.osidc = new ObjectOutputStream(new FileOutputStream("idcounter"));
-    }
-    public void loadAuctions() throws IOException, ClassNotFoundException {
-        ObjectInputStream is = new ObjectInputStream(new FileInputStream("auctions"));
-        this.auctions = (HashMap) is.readObject();
-        is.close();
-    }
-    public void loadCompanies() throws IOException, ClassNotFoundException {
-        ObjectInputStream is = new ObjectInputStream(new FileInputStream("companies"));
-        this.companies = (HashMap) is.readObject();
-        System.out.println(this.companies.toString());
-        is.close();
-    }
-    public void loadInvestors() throws IOException, ClassNotFoundException {
-        ObjectInputStream is = new ObjectInputStream(new FileInputStream("investors"));
-        this.investors = (HashMap) is.readObject();
-        is.close();
-    }
-    public void loadEmissions() throws IOException, ClassNotFoundException {
-        ObjectInputStream is = new ObjectInputStream(new FileInputStream("emissions"));
-        this.emissions = (HashMap) is.readObject();
-        is.close();
     }
 
-    public void loadCounter() throws IOException, ClassNotFoundException {
-        ObjectInputStream is = new ObjectInputStream(new FileInputStream("idcounter"));
-        this.auctions = (HashMap<Integer,Auction>) is.readObject();
-        is.close();
-    }
     public void writeCompanies(){
-        try {
-            osc.writeObject(companies);
-            osc.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.companiesStorage.write( companies );
     }
     public void writeInvestors(){
-        try {
-            osi.writeObject(investors);
-            osi.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.investorsStorage.write( investors );
     }
     public void writeEmissions(){
-        try {
-            ose.writeObject(emissions);
-            ose.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.emissionsStorage.write( emissions );
     }
     public void writeAuctions(){
-        try {
-            osa.writeObject(auctions);
-            osa.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.auctionsStorage.write( auctions );
     }
     public void writeCounter(){
-        try {
-            osa.writeObject(idCounter.get());
-            osa.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.idCounterStorage.write( idCounter );
     }
-
 
     @GET
     @Path("/users")
@@ -335,7 +314,7 @@ public class test implements Serializable {
 
     @GET
     @Path("/auction/{id}")
-    public Response putAuction ( @PathParam( "id" ) int Id ){
+    public Response getAuction ( @PathParam( "id" ) int Id ){
         synchronized ( this ) {
             Auction auction = this.auctions.get( Id );
 
@@ -346,8 +325,8 @@ public class test implements Serializable {
             return Response.ok( auction ).build();
         }
     }
-    /*
-    @POST
+
+    @PUT
     @Path("/auction/{id}")
     public Response putAuction ( @PathParam( "id" ) int Id, Auction auction ){
         synchronized ( this ) {
@@ -359,7 +338,7 @@ public class test implements Serializable {
             return Response.ok(auction).build();
         }
     }
-    */
+
 
     /*
      * Emissions
@@ -402,7 +381,7 @@ public class test implements Serializable {
         }
     }
 
-    @POST
+    @PUT
     @Path("/emission/{id}")
     public Response putEmission ( @PathParam( "id" ) int Id, Emission emission ){
         synchronized ( this ) {

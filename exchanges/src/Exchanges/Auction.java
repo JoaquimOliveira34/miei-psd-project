@@ -3,6 +3,7 @@ package Exchanges;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.IOException;
 import java.util.*;
@@ -20,6 +21,7 @@ class AuctionBidding implements Comparable< AuctionBidding > {
 
     // When two biddings with the same interest rate are proposed, the oldest always has priority
     // And to know which one is the oldest, we use this long counter
+    @JsonIgnore()
     private long order = AuctionBidding.increment();
 
     public AuctionBidding ( int investor, int amount, double interestRate ) {

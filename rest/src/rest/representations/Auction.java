@@ -2,7 +2,6 @@ package rest.representations;
 
 import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
 
 class Bidding implements Serializable {
     private int investor;
