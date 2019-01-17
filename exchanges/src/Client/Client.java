@@ -19,8 +19,6 @@ public class Client {
     private static final Menu menuInvestors =  new Menu( new String[]   { "Licitar", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões"});
     private static final Menu menuCompanys = new Menu( new String[]     { "Criar leila", "Criar leilao com taxa fixa", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões"});
 
-    private final ZMQ.Socket socketSub ;
-
     private final Scanner s;
 
     private State state;
@@ -33,13 +31,9 @@ public class Client {
 
         s = new Scanner( System.in);
 
-        ZMQ.Context context = ZMQ.context(1);
-        socketSub = context.socket( ZMQ.SUB );
-        //socketSub.connect( "tcp://localhost:+ proxyAddress );
-
         state = State.NONE;
 
-        this.middleware = new Middleware( serverAddress );
+        this.middleware = new Middleware( serverAddress, proxyAddress );
 
         /////////////////// Start ///////////////////
         boolean flag = true ;
@@ -204,7 +198,7 @@ public class Client {
 
         middleware.sendAuthentication( type, Protos.Authentication.CredentialsType.REGISTER, username, password);
 
-        Protos.ServerResponse response = middleware.receiveMsg();
+        Protos.ServerResponse response = middleware.getMailbox().readResponse();
 
         if ( response.hasError() )
             System.out.println("Invalido, tente novamente.");
@@ -231,7 +225,7 @@ public class Client {
 
         System.out.println("Enviado");
 
-        Protos.ServerResponse response = middleware.receiveMsg();
+        Protos.ServerResponse response = middleware.getMailbox().readResponse();
 
         if( response.hasError() )
             System.out.println("Invalido, tente novamente.");

@@ -1,6 +1,7 @@
 package Client;
 
 import Exchanges.Protos;
+import org.zeromq.ZMQ;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -11,23 +12,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Middleware {
-
-    private final DataInputStream cis;
     private final DataOutputStream cos;
     private final Socket sck;
-    private final byte[] b1 = new byte[5];
+    private final Mailbox mailbox;
 
-    public Middleware(int ServerPort ) throws IOException {
+    public Middleware( int ServerPort, int proxyPort ) throws IOException {
+        sck = new Socket( InetAddress.getLocalHost(), ServerPort );
 
-        sck = new Socket( InetAddress.getLocalHost(), ServerPort);
-
-        cis = new DataInputStream(sck.getInputStream());
         cos = new DataOutputStream(sck.getOutputStream());
+
+        this.mailbox = new Mailbox( ZMQ.context( 1 ), sck, proxyPort );
+
+        this.mailbox.start();
     }
 
-    public void sendAuthentication(Protos.Authentication.UserType userType,
-                                   Protos.Authentication.CredentialsType credentialsType,
-                                   String username, String password ) throws IOException {
+    public Mailbox getMailbox () {
+        return mailbox;
+    }
+
+    public void sendAuthentication( Protos.Authentication.UserType userType,
+                                    Protos.Authentication.CredentialsType credentialsType,
+                                    String username, String password ) throws IOException {
 
         Protos.Authentication auth = Protos.Authentication.newBuilder()
                 .setUserType( userType)
@@ -87,28 +92,6 @@ public class Middleware {
         byte[] ba = msgInvestor.toByteArray();
         cos.write(ba);
         cos.flush();
-    }
-
-    public List<Protos.ServerResponse> receiveAllMsg() throws IOException {
-        List<Protos.ServerResponse> list = new ArrayList<>();
-
-        while( cis.available() > 0 ){
-            list.add( receiveMsg() );
-        }
-        return list;
-    }
-
-    public Protos.ServerResponse receiveMsg() throws IOException {
-
-        // get size of message
-        cis.readFully(b1);
-        int msgSize = Protos.IntMessage.parseFrom( b1).getValue();
-
-        //get message
-        byte[] b2 = new byte[msgSize];
-        cis.readFully(b2);
-
-        return  Protos.ServerResponse.parseFrom( b2 );
     }
 
     public void close() throws IOException {
