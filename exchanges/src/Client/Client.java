@@ -4,6 +4,7 @@ import Exchanges.Protos;
 import org.zeromq.ZMQ;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Scanner;
 
 
@@ -16,8 +17,8 @@ public class Client {
     }
 
     private static final Menu menuWithoutLogin = new Menu( new String[] { "Login", "Criar conta", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões"});
-    private static final Menu menuInvestors =  new Menu( new String[]   { "Licitar", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões"});
-    private static final Menu menuCompanys = new Menu( new String[]     { "Criar leila", "Criar leilao com taxa fixa", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões"});
+    private static final Menu menuInvestors =  new Menu( new String[]   { "Licitar", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões", "Ler Mensagens", "Ler Notificações"});
+    private static final Menu menuCompanys = new Menu( new String[]     { "Criar leila", "Criar leilao com taxa fixa", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões", "Ler Mensagens", "Ler Notificações"});
 
     private final Scanner s;
 
@@ -56,7 +57,22 @@ public class Client {
         middleware.close();
     }
 
+    // TODO Question: Should loggout and logging in with a different account do a reset of notifications an messages?
+    private void showMenuHeader () {
+        int messages = this.middleware.getMailbox().getMessageCount();
+        int notifications = this.middleware.getMailbox().getNotificationsCount();
+
+        if ( messages > 0 && notifications > 0 ) {
+            System.out.printf( "**** (%d unread messages, %d unread notifications) ****\n", messages, notifications );
+        } else if ( messages > 0 ) {
+            System.out.printf( "**** (%d unread messages) ****\n", messages );
+        } else if ( notifications > 0 ) {
+            System.out.printf( "**** (%d unread notifications) ****\n", notifications );
+        }
+    }
+
     private void showMenuInvestors() {
+        this.showMenuHeader();
         System.out.println( menuInvestors.toString());
 
         switch (menuInvestors.getOption() ){
@@ -78,10 +94,16 @@ public class Client {
             case 5:
                 listAuctions();
                 break;
+            case 6:
+                listMessages();
+                break;
+            case 7:
+                listNotifications();
         }
     }
 
     private void showMenuCompanys() throws IOException {
+        this.showMenuHeader();
         System.out.println( menuCompanys.toString());
 
         switch ( menuCompanys.getOption() ){
@@ -103,6 +125,11 @@ public class Client {
             case 5:
                 listAuctions();
                 break;
+            case 6:
+                listMessages();
+                break;
+            case 7:
+                listNotifications();
         }
     }
 
@@ -171,6 +198,30 @@ public class Client {
 
     private void listsubscriptions() {
 
+    }
+
+    private void listMessages () {
+        List<String> messages = this.middleware.getMailbox().readMessages();
+
+        if ( messages.size() == 0 ) {
+            System.out.println( "---- Sem mensagens para ler... ----" );
+        }
+
+        for ( int i = 0; i < messages.size(); i++ ) {
+            System.out.printf( "%d: %s\n", i + 1, messages.get( i ) );
+        }
+    }
+
+    private void listNotifications () {
+        List<String> notifications = this.middleware.getMailbox().readNotifications();
+
+        if ( notifications.size() == 0 ) {
+            System.out.println( "---- Sem notificações para ler... ----" );
+        }
+
+        for ( int i = 0; i < notifications.size(); i++ ) {
+            System.out.printf( "%d: %s\n", i + 1, notifications.get( i ) );
+        }
     }
 
     private void subscribe() {
