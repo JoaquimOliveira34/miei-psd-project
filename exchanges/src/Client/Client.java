@@ -1,7 +1,6 @@
 package Client;
 
 import Exchanges.Protos;
-import org.zeromq.ZMQ;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,6 +25,8 @@ public class Client {
 
     private Middleware middleware;
 
+    private DirectoryClient directory;
+
     Client( int serverAddress, int  proxyAddress) throws IOException {
 
         /////////////////// Initiations  ///////////////////
@@ -35,6 +36,9 @@ public class Client {
         state = State.NONE;
 
         this.middleware = new Middleware( serverAddress, proxyAddress );
+
+        // TODO Maybe these parameters should also be customizable?
+        this.directory = new DirectoryClient( "localhost", 8080 );
 
         /////////////////// Start ///////////////////
         boolean flag = true ;
@@ -193,7 +197,21 @@ public class Client {
     }
 
     private void listCompanies() {
+        try {
+            List< DirectoryClient.Company > companies = this.directory.listCompanies();
 
+            System.out.println( "#### Empresas ####" );
+
+            if ( companies.size() == 0 ) {
+                System.out.println( "---- Sem empresas registadas... ----" );
+            }
+
+            for ( DirectoryClient.Company company : companies ) {
+                System.out.printf( "%d: %s, %s\n", company.getId(), company.getName(), company.getZone() );
+            }
+        } catch ( IOException e ) {
+            e.printStackTrace();
+        }
     }
 
     private void listsubscriptions() {
@@ -201,6 +219,8 @@ public class Client {
     }
 
     private void listMessages () {
+        System.out.println( "#### Mensagens ####" );
+
         List<String> messages = this.middleware.getMailbox().readMessages();
 
         if ( messages.size() == 0 ) {
@@ -213,6 +233,8 @@ public class Client {
     }
 
     private void listNotifications () {
+        System.out.println( "#### Notificações ####" );
+
         List<String> notifications = this.middleware.getMailbox().readNotifications();
 
         if ( notifications.size() == 0 ) {

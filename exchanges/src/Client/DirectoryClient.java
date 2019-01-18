@@ -1,5 +1,6 @@
 package Client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.OkHttpClient;
@@ -24,10 +25,10 @@ public class DirectoryClient {
         return String.format( "http://%s:%d/peerlending/%s", this.address, this.port, String.join( "/", segments ) );
     }
 
-    protected <T> List<T> readListOf ( String json ) throws IOException {
+    protected <T> List<T> readListOf ( String json, TypeReference<List<T>> type ) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
 
-        return mapper.readValue( json, new TypeReference<List<T>>(){} );
+        return mapper.readValue( json, type );
     }
 
     public List< Company > listCompanies () throws IOException {
@@ -39,7 +40,7 @@ public class DirectoryClient {
         try ( Response response = client.newCall( request ).execute() ) {
             String string = response.body().string();
 
-            return readListOf( string );
+            return readListOf( string, new TypeReference<List<Company>>(){} );
         }
     }
 
@@ -52,12 +53,12 @@ public class DirectoryClient {
         try ( Response response = client.newCall( request ).execute() ) {
             String string = response.body().string();
 
-            return readListOf( string );
+            return readListOf( string, new TypeReference<List<Auction>>(){} );
         }
     }
 
     // -- Entities
-
+    @JsonIgnoreProperties( ignoreUnknown = true )
     public static class Company {
         private int Id;
 
@@ -115,6 +116,7 @@ public class DirectoryClient {
         }
     }
 
+    @JsonIgnoreProperties( ignoreUnknown = true )
     public static class Auction {
         private int    id;
         private int    company;
