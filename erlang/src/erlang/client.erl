@@ -98,19 +98,18 @@ client( Sock, Id, investor ) ->
 %% @return  :: Binary | { Binnary, Id, Type } if the user is authenticated 
 makeLogin( Bin ) -> 
     
-    {Type, User, Name, Pass} = translater:decode_Authentication( Bin ),
-
+    {CredType, UserType, Name, Pass} = translater:decode_Authentication( Bin ),
     
-    case Type of    
+    case CredType of    
         
-        'REGISTER' -> Result = accounts:create_account( Name, Pass, User);
+        'REGISTER' -> Result = accounts:create_account( Name, Pass, UserType);
         
-        'LOGIN' -> Result = accounts:verify( Name, Pass)
+        'LOGIN' -> Result = accounts:verify( Name, Pass, UserType)
     end,
 
     case Result of 
     
-        {ok, Id, UserType} ->
+        {ok, Id } ->
             { translater:encode_Reply( response, "Login valido. Bem vindo"), Id, UserType };
 
         ok -> 

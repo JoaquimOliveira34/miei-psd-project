@@ -7,6 +7,13 @@
 
 -define(protos_gpb_version, "4.4.1").
 
+-ifndef('INTMESSAGE_PB_H').
+-define('INTMESSAGE_PB_H', true).
+-record('IntMessage',
+        {value                  :: integer()        % = 1, 32 bits
+        }).
+-endif.
+
 -ifndef('SERVERRESPONSE_PB_H').
 -define('SERVERRESPONSE_PB_H', true).
 -record('ServerResponse',
@@ -60,13 +67,6 @@
 -record('Notification',
         {company                :: integer(),       % = 1, 32 bits
          message                :: iolist()         % = 2
-        }).
--endif.
-
--ifndef('INTMESSAGE_PB_H').
--define('INTMESSAGE_PB_H', true).
--record('IntMessage',
-        {value                  :: integer()        % = 1, 32 bits
         }).
 -endif.
 

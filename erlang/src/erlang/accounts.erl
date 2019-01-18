@@ -2,7 +2,7 @@
 -module(accounts).
 
 %% API
--export( [init/0, create_account/3, verify/2]).
+-export( [init/0, create_account/3, verify/3]).
 
 init()->
 
@@ -17,10 +17,10 @@ init()->
 accounts( Map, NextId )->
 
     receive
-        { verify , Username, Passwd, Pid } ->
+        { verify , Username, Passwd, Type, Pid } ->
             case maps:find( Username, Map) of
                 {ok, { Id, Passwd, Type} } ->
-                    Pid ! {ok, Id, Type} ;
+                    Pid ! {ok, Id } ;
                 _ ->
                     Pid ! error
                 
@@ -50,12 +50,12 @@ create_account( Username, Passwd, Type) ->
     end.
 
 
-% return  {ok, Id, Type} || error 
-verify( Username, Passwd) ->
+% return  {ok, Id } || error 
+verify( Username, Passwd, Type) ->
 
-    accounts ! { verify, Username, Passwd, self() },
+    accounts ! { verify, Username, Passwd, Type, self() },
     
     receive
-        {ok, Id, Type} -> {ok, Id, Type };
+        {ok, Id, Type} -> {ok, Id};
         error -> error 
     end.
