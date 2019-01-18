@@ -46,7 +46,7 @@ decode_MsgCompany( Bin ) ->
     proto:decode_msg( Bin, 'MsgCompany' ).
     
 
-%return {Type, User, Name, Pass} 
+%return {CredType, UserType, Name, Pass} 
 decode_Authentication( Bin ) ->
     Msg = protos:decode_msg( Bin, 'Authentication'),
     {   Msg#'Authentication'.credentialsType, 
