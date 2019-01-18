@@ -1,17 +1,17 @@
 package rest.representations;
 
 public class User {
-        private static String user;
-        private static String password;
-        private static Boolean isInvestor;
-        private static int id;
+        private String user;
+        private String password;
+        private Boolean isInvestor;
+        private int id;
 
-    public static int getId() {
+    public int getId() {
         return id;
     }
 
-    public static void setId(int id) {
-        User.id = id;
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getUser() {
