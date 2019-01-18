@@ -136,7 +136,7 @@ public class test implements Serializable {
         // demo only; if counter is resource state, GET should not increment it
         return new Saying(i, content);*/
         synchronized ( this ) {
-            return  new ArrayList<>( this.companies.values() );
+            return new ArrayList<>( this.companies.values() );
         }
     }
     @POST

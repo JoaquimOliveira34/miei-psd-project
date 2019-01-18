@@ -1,5 +1,7 @@
 package rest.representations;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +32,7 @@ public class Company implements Serializable {
         this.auctions = new ArrayList<>();
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }

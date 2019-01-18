@@ -4,6 +4,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class Investor implements Serializable {
     private int Id;
     private String name;
@@ -25,6 +27,7 @@ public class Investor implements Serializable {
         this.auctionsBidded = new ArrayList<>();
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }
