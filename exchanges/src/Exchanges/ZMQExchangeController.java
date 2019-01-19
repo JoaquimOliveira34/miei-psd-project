@@ -97,7 +97,7 @@ public class ZMQExchangeController implements ExchangeController {
 
     @Override
     public void emissionCreated ( Emission emission ) {
-        this.publish( emission.getCompany(), "Emission created with ammount %d and fixed interest rate %d.", emission.getAmount(), emission.getInterestRate() );
+        this.publish( emission.getCompany(), "Emission created with ammount %d and fixed interest rate %f.", emission.getAmount(), emission.getInterestRate() );
     }
 
     @Override
@@ -144,12 +144,14 @@ public class ZMQExchangeController implements ExchangeController {
     }
 
     public void sendError ( int user, String error ) {
-        this.pushSocket.send(
-                Protos.ServerResponse.newBuilder()
-                        .setUserId( user )
-                        .setError( error )
-                        .build().toByteArray()
-        );
+        Protos.ServerResponse msg = Protos.ServerResponse.newBuilder()
+                .setUserId( user )
+                .setError( error )
+                .build();
+
+        System.out.println( msg );
+
+        this.pushSocket.send( msg.toByteArray() );
     }
 
     public void run () {
@@ -173,6 +175,8 @@ public class ZMQExchangeController implements ExchangeController {
 
                 try {
                     Protos.MsgExchange message = Protos.MsgExchange.parseFrom( bytes );
+
+                    System.out.println( message );
 
                     // Can receive two types of messages from the same socket: decide which one it is and call the
                     // appropriate method

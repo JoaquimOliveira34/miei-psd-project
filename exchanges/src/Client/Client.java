@@ -67,15 +67,15 @@ public class Client {
         int notifications = this.middleware.getMailbox().getNotificationsCount();
 
         if ( messages > 0 && notifications > 0 ) {
-            System.out.printf( "**** (%d unread messages, %d unread notifications) ****\n", messages, notifications );
+            System.out.printf( "**** (%d mensagens por ler, %d notificaçoes por ler) ****\n", messages, notifications );
         } else if ( messages > 0 ) {
-            System.out.printf( "**** (%d unread messages) ****\n", messages );
+            System.out.printf( "**** (%d mensagens por ler) ****\n", messages );
         } else if ( notifications > 0 ) {
-            System.out.printf( "**** (%d unread notifications) ****\n", notifications );
+            System.out.printf( "**** (%d notificaçoes por ler) ****\n", notifications );
         }
     }
 
-    private void showMenuInvestors() {
+    private void showMenuInvestors() throws IOException {
         this.showMenuHeader();
         System.out.println( menuInvestors.toString());
 
@@ -181,15 +181,21 @@ public class Client {
         System.out.print("Qual a quantidade de dinheiro a pedir em leilao: ");
         int amount = Integer.parseInt( s.nextLine() );
 
-        System.out.print("Qual a taxa de juros maxima do leilao: ");
-        float rate = Float.parseFloat( s.nextLine() );
-
-        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.AUCTION, amount, rate );
+        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.AUCTION, amount );
     }
 
 
-    private void toAuction() {
+    private void toAuction() throws IOException {
+        System.out.print("Qual a empresa a licitar: ");
+        int company = Integer.parseInt( s.nextLine() );
 
+        System.out.print("Qual a quantidade de dinheiro a licitar: ");
+        int amount = Integer.parseInt( s.nextLine() );
+
+        System.out.print("Qual a taxa de juros da licitaçao: ");
+        float rate = Float.parseFloat( s.nextLine() );
+
+        this.middleware.sendMsgInvestor( company, amount, rate );
     }
 
     private void listAuctions() {

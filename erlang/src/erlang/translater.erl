@@ -35,7 +35,7 @@ getIdServerResponse( Record ) ->
 %%%%%%%%%% DECODE %%%%%%%%%%
 %return record
 decode_ServerResponse( Bin) ->
-    protos:decode_ServerResponse( Bin, 'ServerResponse').
+    protos:decode_msg( Bin, 'ServerResponse').
 
 %return record   
 decode_MsgInvestor( Bin ) ->
