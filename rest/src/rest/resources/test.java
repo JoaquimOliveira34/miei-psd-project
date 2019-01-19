@@ -92,11 +92,12 @@ public class test implements Serializable {
 
         // INITIAL TEST DATA
         if ( this.companies.size() == 0 ) {
-            Company c1= new Company(this.idCounter.incrementAndGet(),"test","password","Braga");
-            Company c2= new Company(this.idCounter.incrementAndGet(),"test","password","Braga");
-            this.companies.put("test",c1);
-            this.companies.put("test1",c2);
-            this.investors.put("test",new Investor(this.idCounter.incrementAndGet(),"test","password","Braga"));
+            Company c1= new Company(this.idCounter.incrementAndGet(),"Primavera","primavera123","Braga");
+            Company c2= new Company(this.idCounter.incrementAndGet(),"XPAND-IT","XPAND123","Braga");
+            this.companies.put("Primavera",c1);
+            this.companies.put("XPAND-IT",c2);
+            this.investors.put("Bill Gates",new Investor(this.idCounter.incrementAndGet(),"Bill Gates","ms123","US-WEST"));
+            this.investors.put("Zuck",new Investor(this.idCounter.incrementAndGet(),"Zuck","fb123","US-EAST"));
         }
     }
 
