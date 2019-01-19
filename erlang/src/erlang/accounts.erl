@@ -7,6 +7,7 @@
 init()->
 
     Users = rest:getUsers(),
+    io:format("Clients loaded:\n~p ", [Users] ),
 
     Pid = spawn( fun() -> accounts(  Users , length( maps:keys(Users) )) end),
 
@@ -33,7 +34,7 @@ accounts( Map, NextId )->
                 false ->
                     Pid ! ok,
                     NewMap = (maps:put( Username ,{ NextId, Passwd, Type} , Map) ),
-                    rest:registerUser( Username, Passwd, Type, NextId),
+                    rest:registerUser( Username, Passwd, Type),
                     accounts(NewMap, NextId + 1)
             end
     end,
