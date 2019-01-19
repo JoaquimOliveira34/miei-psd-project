@@ -110,11 +110,12 @@ getExchange( List , Company ) ->
     
     Index = Company rem Size,
   
-    lists:nth( Index, List ).
+    %% os indices começam em 1
+    lists:nth( Index + 1, List ).
 
 %% return Pid | error
 getUserPid ( Id ) ->
-    receiver ! { get, Id, self() },
+    userPids ! { get, Id, self() },
 
     receive
         { getUserPid, error } -> error;

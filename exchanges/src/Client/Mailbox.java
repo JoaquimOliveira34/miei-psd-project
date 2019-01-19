@@ -175,8 +175,8 @@ public class Mailbox {
         if ( this.isWaitingResponse() ) {
             this.responses.add( message );
         } else {
-            if ( message.getError() != null ) {
-                this.messages.add( "[error] " + message.getResponse() );
+            if ( message.getError() != null && !message.getError().equals( "" ) ) {
+                this.messages.add( "[error] " + message.getError() );
             } else {
                 this.messages.add( message.getResponse() );
             }
