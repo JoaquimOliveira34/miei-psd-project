@@ -15,6 +15,7 @@ public class Investor implements Serializable {
     public Investor(){};
 
     public Investor(int id,String name, String password, String zone){
+        this.Id = id;
         this.name=name;
         this.password=password;
         this.zone=zone;

@@ -98,6 +98,7 @@ public class test implements Serializable {
             this.companies.put("XPAND-IT",c2);
             this.investors.put("Bill Gates",new Investor(this.idCounter.incrementAndGet(),"Bill Gates","ms123","US-WEST"));
             this.investors.put("Zuck",new Investor(this.idCounter.incrementAndGet(),"Zuck","fb123","US-EAST"));
+            System.out.println(this.idCounter.get());
         }
     }
 
