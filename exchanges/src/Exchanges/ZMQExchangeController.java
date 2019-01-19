@@ -70,6 +70,8 @@ public class ZMQExchangeController implements ExchangeController {
 
     @Override
     public void auctionCreated ( Auction auction ) {
+        this.sendReply( auction.getCompany(), "Auction created successfully." );
+
         this.publish( auction.getCompany(), "Auction created with ammount %d and max interest rate %f.", auction.getAmount(), auction.getMaxInterestRate() );
     }
 
@@ -81,12 +83,14 @@ public class ZMQExchangeController implements ExchangeController {
     @Override
     public void auctionClosed ( int company, boolean success, List< AuctionBidding > biddings ) {
         if ( success ) {
+            this.sendReply( company, "Auction closed with enough biddings." );
             this.publish( company, "Auction closed with enough biddings." );
 
             for ( AuctionBidding bidding : biddings ) {
                 this.sendReply( bidding.getInvestor(), String.format( "Auction closed successfully at company %d. Your bidding of %d at %f was approved.", company, bidding.getAmount(), bidding.getInterestRate() ) );
             }
         } else {
+            this.sendReply( company, "Auction closed without enough biddings." );
             this.publish( company, "Auction closed without enough biddings." );
 
             for ( AuctionBidding bidding : biddings ) {
@@ -97,7 +101,7 @@ public class ZMQExchangeController implements ExchangeController {
 
     @Override
     public void emissionCreated ( Emission emission ) {
-        this.publish( emission.getCompany(), "Emission created with ammount %d and fixed interest rate %d.", emission.getAmount(), emission.getInterestRate() );
+        this.publish( emission.getCompany(), "Emission created with ammount %d and fixed interest rate %f.", emission.getAmount(), emission.getInterestRate() );
     }
 
     @Override
@@ -135,21 +139,25 @@ public class ZMQExchangeController implements ExchangeController {
     }
 
     public void sendReply ( int user, String response ) {
-        this.pushSocket.send(
-                Protos.ServerResponse.newBuilder()
-                        .setUserId( user )
-                        .setResponse( response )
-                        .build().toByteArray()
-        );
+        Protos.ServerResponse msg = Protos.ServerResponse.newBuilder()
+                .setUserId( user )
+                .setResponse( response )
+                .build();
+
+        System.out.println( msg );
+
+        this.pushSocket.send( msg.toByteArray() );
     }
 
     public void sendError ( int user, String error ) {
-        this.pushSocket.send(
-                Protos.ServerResponse.newBuilder()
-                        .setUserId( user )
-                        .setError( error )
-                        .build().toByteArray()
-        );
+        Protos.ServerResponse msg = Protos.ServerResponse.newBuilder()
+                .setUserId( user )
+                .setError( error )
+                .build();
+
+        System.out.println( msg );
+
+        this.pushSocket.send( msg.toByteArray() );
     }
 
     public void run () {
@@ -173,6 +181,8 @@ public class ZMQExchangeController implements ExchangeController {
 
                 try {
                     Protos.MsgExchange message = Protos.MsgExchange.parseFrom( bytes );
+
+                    System.out.println( message );
 
                     // Can receive two types of messages from the same socket: decide which one it is and call the
                     // appropriate method

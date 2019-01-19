@@ -2,7 +2,7 @@
 -module(accounts).
 
 %% API
--export( [init/0, create_account/3, verify/2]).
+-export( [init/0, create_account/3, verify/3]).
 
 init()->
 
@@ -15,19 +15,18 @@ init()->
 
 %Users = #{ quim => {id, pass, investor}, pedro => {id, pass2,investor} , ...}
 accounts( Map, NextId )->
-
     receive
-        { verify , Username, Passwd, Pid } ->
-            case maps:find( Username, Map) of
+        { verify , Username, Passwd, Type, Pid } ->
+            case maps:find( Username, Map ) of
                 {ok, { Id, Passwd, Type} } ->
-                    Pid ! {ok, Id, Type} ;
+                    Pid ! {ok, Id, Type } ;
                 _ ->
                     Pid ! error
                 
             end;
 
         { create, Username, Passwd, Type, Pid} ->
-            
+
             case maps:is_key(Username, Map) of
                 true ->
                     Pid ! error;
@@ -50,12 +49,12 @@ create_account( Username, Passwd, Type) ->
     end.
 
 
-% return  {ok, Id, Type} || error 
-verify( Username, Passwd) ->
+% return  {ok, Id } || error 
+verify( Username, Passwd, Type) ->
 
-    accounts ! { verify, Username, Passwd, self() },
+    accounts ! { verify, Username, Passwd, Type, self() },
     
     receive
-        {ok, Id, Type} -> {ok, Id, Type };
+        {ok, Id, Type} -> {ok, Id};
         error -> error 
     end.

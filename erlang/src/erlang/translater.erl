@@ -35,18 +35,18 @@ getIdServerResponse( Record ) ->
 %%%%%%%%%% DECODE %%%%%%%%%%
 %return record
 decode_ServerResponse( Bin) ->
-    proto:decode_ServerResponse( Bin, 'ServerResponse').
+    protos:decode_msg( Bin, 'ServerResponse').
 
 %return record   
 decode_MsgInvestor( Bin ) ->
-    proto:decode_msg( Bin, 'MsgInvestor' ).
+    protos:decode_msg( Bin, 'MsgInvestor' ).
 
 %return record
 decode_MsgCompany( Bin ) ->
-    proto:decode_msg( Bin, 'MsgCompany' ).
+    protos:decode_msg( Bin, 'MsgCompany' ).
     
 
-%return {Type, User, Name, Pass} 
+%return {CredType, UserType, Name, Pass} 
 decode_Authentication( Bin ) ->
     Msg = protos:decode_msg( Bin, 'Authentication'),
     {   Msg#'Authentication'.credentialsType, 

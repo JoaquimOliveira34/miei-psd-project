@@ -40,6 +40,9 @@ public class Client {
         // TODO Maybe these parameters should also be customizable?
         this.directory = new DirectoryClient( "localhost", 8080 );
 
+
+        this.middleware.getMailbox().setOnReceive( this::onReceiveMessage );
+
         /////////////////// Start ///////////////////
         boolean flag = true ;
 
@@ -67,15 +70,15 @@ public class Client {
         int notifications = this.middleware.getMailbox().getNotificationsCount();
 
         if ( messages > 0 && notifications > 0 ) {
-            System.out.printf( "**** (%d unread messages, %d unread notifications) ****\n", messages, notifications );
+            System.out.printf( "**** (%d mensagens por ler, %d notificaçoes por ler) ****\n", messages, notifications );
         } else if ( messages > 0 ) {
-            System.out.printf( "**** (%d unread messages) ****\n", messages );
+            System.out.printf( "**** (%d mensagens por ler) ****\n", messages );
         } else if ( notifications > 0 ) {
-            System.out.printf( "**** (%d unread notifications) ****\n", notifications );
+            System.out.printf( "**** (%d notificaçoes por ler) ****\n", notifications );
         }
     }
 
-    private void showMenuInvestors() {
+    private void showMenuInvestors() throws IOException {
         this.showMenuHeader();
         System.out.println( menuInvestors.toString());
 
@@ -84,7 +87,7 @@ public class Client {
                 toAuction();
                 break;
             case 1:
-                subscribe();
+                toEmission();
                 break;
             case 2:
                 listsubscriptions();
@@ -164,6 +167,16 @@ public class Client {
 
     }
 
+    //////////////// Messages & Notifications /////////////////
+    private void onReceiveMessage () {
+        for ( String line : this.middleware.getMailbox().readMessages() ) {
+            System.out.println( "[msg] " + line );
+        }
+
+        for ( String line : this.middleware.getMailbox().readNotifications() ) {
+            System.out.println( "[sub] " + line );
+        }
+    }
 
     //////////////// Actions /////////////////
 
@@ -171,10 +184,7 @@ public class Client {
         System.out.print("Qual a quantidade de dinheiro a emitir: ");
         int amount = Integer.parseInt( s.nextLine() );
 
-        System.out.print("Qual a taxa de juros do da emissao: ");
-        float rate = Float.parseFloat( s.nextLine() );
-
-        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.FIXEDRATE, amount, rate );
+        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.FIXEDRATE, amount );
     }
 
     private void createAuction() throws IOException {
@@ -187,9 +197,27 @@ public class Client {
         this.middleware.sendMsgCompany( Protos.MsgCompany.Type.AUCTION, amount, rate );
     }
 
+    private void toAuction() throws IOException {
+        System.out.print("Qual a empresa a licitar: ");
+        int company = Integer.parseInt( s.nextLine() );
 
-    private void toAuction() {
+        System.out.print("Qual a quantidade de dinheiro a licitar: ");
+        int amount = Integer.parseInt( s.nextLine() );
 
+        System.out.print("Qual a taxa de juros da licitaçao: ");
+        float rate = Float.parseFloat( s.nextLine() );
+
+        this.middleware.sendMsgInvestor( company, amount, rate );
+    }
+
+    private void toEmission() throws IOException {
+        System.out.print("Qual a empresa a subscrever emissao taxa fixa: ");
+        int company = Integer.parseInt( s.nextLine() );
+
+        System.out.print("Qual a quantidade de dinheiro a subscrever: ");
+        int amount = Integer.parseInt( s.nextLine() );
+
+        this.middleware.sendMsgInvestor( company, amount );
     }
 
     private void listAuctions() {
@@ -309,6 +337,8 @@ public class Client {
                 state = State.COMPANY;
             else
                 state = State.INVESTOR;
+
+            this.middleware.getMailbox().setWaitingResponse( false );
         }
     }
 

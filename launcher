@@ -1,3 +1,20 @@
+cleanup_ports () {  
+    PORTS=""
+    PORTS+=$'\n'$(lsof -n -i4TCP:11101)
+    PORTS+=$'\n'$(lsof -n -i4TCP:11102)
+    PORTS+=$'\n'$(lsof -n -i :8080)
+    PORTS+=$'\n'$(lsof -n -i :12345)
+
+    PORTS=$(echo "$PORTS" | grep LISTEN | awk '{ print $2 }')
+
+    if [[ $PORTS = *[!\ ]* ]]; then    
+        echo "Killing $PORTS"
+        echo $PORTS | xargs kill
+    fi
+#    lsof -n -i4TCP:11102 | grep LISTEN | awk '{ print $2 }' | xargs kill
+#    lsof -n -i4TCP:8080  | grep LISTEN | awk '{ print $2 }' | xargs kill
+}
+
 cleanup () {
     # A string %1 é expandida para o PID do primeiro processo interno lançado por esta script,
     # A string %2 é expandida para o segundo, e por aí fora
@@ -7,25 +24,29 @@ cleanup () {
 
     # Por alguma razão, matar as exchanges não chega para matar os processos que fazem bind das suas portas
     # Portanto temos de localizá-los manualmente e terminá-los
-    lsof -n -i4TCP:11101 | grep LISTEN | awk '{ print $2 }' | xargs kill
-    lsof -n -i4TCP:11102 | grep LISTEN | awk '{ print $2 }' | xargs kill
+    cleanup_ports
 }
+
+cleanup_ports
 
 # Regista a função cleanup para ser executada quando este comando receber SIGINT
 trap 'cleanup' SIGINT
 
-# Corre o erlang em background
-cd erlang
-make run | sed -e 's/^/[ERLANG] /' &
-
 # De seguida corre as exchanges em background
-cd ../exchanges
+cd exchanges
 make run ARGS="11101 9999 21101 localhost 8080" | sed -e 's/^/[EXCHANGE 1] /' & 
 make run ARGS="11102 9999 21102 localhost 8080" | sed -e 's/^/[EXCHANGE 2] /' &
 
-# Por fim corre o directório REST
-# NOTA: O comando do REST, como é o último, não pode correr em background (para a
-# o script continuar a executar no terminal) e como tal não pode ter o "&" no fim
+# Corre o REST em background
 cd ../rest
-java -jar target/Hello-1.0-SNAPSHOT.jar server config.yml | sed -e 's/^/[REST] /'
+java -jar target/Hello-1.0-SNAPSHOT.jar server config.yml | sed -e 's/^/[REST] /' &
+
+# Como o erlang necessita do REST, esperamos por ele
+read -p "Press enter to launch erlang (when all other services are online)"
+
+# Por fim corre o erlang
+# NOTA: O comando do erlang, como é o último, não pode correr em background (para a
+# o script continuar a executar no terminal) e como tal não pode ter o "&" no fim
+cd ../erlang
+make run | sed -e 's/^/[ERLANG] /'
 

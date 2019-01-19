@@ -10,7 +10,7 @@
 
 init( Port ) ->
       
-    {ok, LSock} = gen_tcp:listen( Port, [binary, {active, true}]),
+    {ok, LSock} = gen_tcp:listen( Port, [binary, {active, true}, {reuseaddr, true}]),
     
     acceptor(LSock).
 
@@ -98,19 +98,24 @@ client( Sock, Id, investor ) ->
 %% @return  :: Binary | { Binnary, Id, Type } if the user is authenticated 
 makeLogin( Bin ) -> 
     
-    {Type, User, Name, Pass} = translater:decode_Authentication( Bin ),
+    {CredType, UserTypeStr, Name, Pass} = translater:decode_Authentication( Bin ),
 
+    UserType = case UserTypeStr of
+        'COMPANY' -> company;
+        'INVESTOR' -> investor;
+        _ -> invalid_type
+    end,
     
-    case Type of    
+    case CredType of    
         
-        'REGISTER' -> Result = accounts:create_account( Name, Pass, User);
+        'REGISTER' -> Result = accounts:create_account( Name, Pass, UserType);
         
-        'LOGIN' -> Result = accounts:verify( Name, Pass)
+        'LOGIN' -> Result = accounts:verify( Name, Pass, UserType)
     end,
 
     case Result of 
     
-        {ok, Id, UserType} ->
+        {ok, Id } ->
             { translater:encode_Reply( response, "Login valido. Bem vindo"), Id, UserType };
 
         ok -> 
