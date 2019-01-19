@@ -10,7 +10,7 @@
 
 init( Port ) ->
       
-    {ok, LSock} = gen_tcp:listen( Port, [binary, {active, true}]),
+    {ok, LSock} = gen_tcp:listen( Port, [binary, {active, true}, {reuseaddr, true}]),
     
     acceptor(LSock).
 
@@ -98,7 +98,13 @@ client( Sock, Id, investor ) ->
 %% @return  :: Binary | { Binnary, Id, Type } if the user is authenticated 
 makeLogin( Bin ) -> 
     
-    {CredType, UserType, Name, Pass} = translater:decode_Authentication( Bin ),
+    {CredType, UserTypeStr, Name, Pass} = translater:decode_Authentication( Bin ),
+
+    UserType = case UserTypeStr of
+        'COMPANY' -> company;
+        'INVESTOR' -> investor;
+        _ -> invalid_type
+    end,
     
     case CredType of    
         
