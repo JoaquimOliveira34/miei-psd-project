@@ -35,6 +35,10 @@ public class Mailbox {
     // Unbounded queue that holds any received, yet to be read, notifications
     private final ConcurrentLinkedQueue< String > notifications = new ConcurrentLinkedQueue<>();
 
+    private boolean waitingResponse = true;
+
+    private Runnable onReceiveHandler = null;
+
     private boolean listening = false;
 
     public Mailbox ( ZMQ.Context context, Socket socket, int proxyPort ) {
@@ -53,6 +57,30 @@ public class Mailbox {
         this.commandsSocketReader.bind( "inproc://mailbox-" + this.hashCode() );
 
         this.commandsSocketWriter.connect( "inproc://mailbox-" + this.hashCode() );
+    }
+
+    public void setOnReceive ( Runnable onReceive ) {
+        synchronized ( this ) {
+            this.onReceiveHandler = onReceive;
+        }
+    }
+
+    public Runnable getOnReceive () {
+        synchronized ( this ) {
+            return onReceiveHandler;
+        }
+    }
+
+    public void setWaitingResponse ( boolean waitingResponse ) {
+        synchronized ( this ) {
+            this.waitingResponse = waitingResponse;
+        }
+    }
+
+    public boolean isWaitingResponse () {
+        synchronized ( this ) {
+            return waitingResponse;
+        }
     }
 
     public int getResponsesCount () {
@@ -134,19 +162,34 @@ public class Mailbox {
     }
 
     // Runs in the auxiliary thread; beware of parallelism
+    private void onReceive () {
+        Runnable handler = this.getOnReceive();
+
+        if ( handler != null ) {
+            handler.run();
+        }
+    }
+
+    // Runs in the auxiliary thread; beware of parallelism
     private void onMessage ( Protos.ServerResponse message ) {
-        // TODO create an optional sync property on server response that is true
-        // only for responses (like for login, create account, etc...)
-        if ( true ) {
+        if ( this.isWaitingResponse() ) {
             this.responses.add( message );
         } else {
-            this.messages.add( message.getResponse() );
+            if ( message.getError() != null ) {
+                this.messages.add( "[error] " + message.getResponse() );
+            } else {
+                this.messages.add( message.getResponse() );
+            }
+
+            this.onReceive();
         }
     }
 
     // Runs in the auxiliary thread; beware of parallelism
     private void onNotification ( String notification ) {
         this.notifications.add( notification );
+
+        this.onReceive();
     }
 
     // Runs in the auxiliary thread; beware of parallelism

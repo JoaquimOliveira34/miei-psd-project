@@ -40,6 +40,9 @@ public class Client {
         // TODO Maybe these parameters should also be customizable?
         this.directory = new DirectoryClient( "localhost", 8080 );
 
+
+        this.middleware.getMailbox().setOnReceive( this::onReceiveMessage );
+
         /////////////////// Start ///////////////////
         boolean flag = true ;
 
@@ -84,7 +87,7 @@ public class Client {
                 toAuction();
                 break;
             case 1:
-                subscribe();
+                toEmission();
                 break;
             case 2:
                 listsubscriptions();
@@ -164,6 +167,16 @@ public class Client {
 
     }
 
+    //////////////// Messages & Notifications /////////////////
+    private void onReceiveMessage () {
+        for ( String line : this.middleware.getMailbox().readMessages() ) {
+            System.out.println( "[msg] " + line );
+        }
+
+        for ( String line : this.middleware.getMailbox().readNotifications() ) {
+            System.out.println( "[sub] " + line );
+        }
+    }
 
     //////////////// Actions /////////////////
 
@@ -171,19 +184,18 @@ public class Client {
         System.out.print("Qual a quantidade de dinheiro a emitir: ");
         int amount = Integer.parseInt( s.nextLine() );
 
-        System.out.print("Qual a taxa de juros do da emissao: ");
-        float rate = Float.parseFloat( s.nextLine() );
-
-        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.FIXEDRATE, amount, rate );
+        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.FIXEDRATE, amount );
     }
 
     private void createAuction() throws IOException {
         System.out.print("Qual a quantidade de dinheiro a pedir em leilao: ");
         int amount = Integer.parseInt( s.nextLine() );
 
-        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.AUCTION, amount );
-    }
+        System.out.print("Qual a taxa de juros maxima do leilao: ");
+        float rate = Float.parseFloat( s.nextLine() );
 
+        this.middleware.sendMsgCompany( Protos.MsgCompany.Type.AUCTION, amount, rate );
+    }
 
     private void toAuction() throws IOException {
         System.out.print("Qual a empresa a licitar: ");
@@ -196,6 +208,16 @@ public class Client {
         float rate = Float.parseFloat( s.nextLine() );
 
         this.middleware.sendMsgInvestor( company, amount, rate );
+    }
+
+    private void toEmission() throws IOException {
+        System.out.print("Qual a empresa a subscrever emissao taxa fixa: ");
+        int company = Integer.parseInt( s.nextLine() );
+
+        System.out.print("Qual a quantidade de dinheiro a subscrever: ");
+        int amount = Integer.parseInt( s.nextLine() );
+
+        this.middleware.sendMsgInvestor( company, amount );
     }
 
     private void listAuctions() {
@@ -315,6 +337,8 @@ public class Client {
                 state = State.COMPANY;
             else
                 state = State.INVESTOR;
+
+            this.middleware.getMailbox().setWaitingResponse( false );
         }
     }
 
