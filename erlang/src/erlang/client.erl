@@ -61,7 +61,7 @@ client( Sock, Id, company ) ->
             client( Sock, Id, company);
 
          {reply, Bin} ->
-            gen_tcp:send( Bin ),
+            tcpSend( Sock, Bin ),
             client( Sock, Id, company);             
     
         { tcp_closed, _ }  -> 
@@ -82,7 +82,7 @@ client( Sock, Id, investor ) ->
             client( Sock, Id, investor);
 
          {reply, Bin} ->
-            gen_tcp:send( Bin ),
+            tcpSend( Sock, Bin ),
             client( Sock, Id, investor);             
     
         { tcp_closed, _ }  -> 
