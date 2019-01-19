@@ -157,10 +157,10 @@ public class test implements Serializable {
     }
 
     @PUT
-    @Path("/company/{name}")
-    public Response putCompany(@PathParam("name") String name, String password, String zone) {
+    @Path("/company/{name}/{password}")
+    public Response putCompany(@PathParam("name") String name, @PathParam("password") String password) {
         synchronized (this){
-            Company c = new Company(this.idCounter.incrementAndGet(),name,password,zone);
+            Company c = new Company(this.idCounter.incrementAndGet(),name,password,"NDEF");
             this.companies.put(name, c);
             writeCompanies();
             writeCounter();
@@ -234,10 +234,10 @@ public class test implements Serializable {
     }
 
     @PUT
-    @Path("/investor/{name}")
-    public Response putInvestor(@PathParam("name") String name, String password, String zone) {
+    @Path("/investor/{name}/{password}")
+    public Response putInvestor(@PathParam("name") String name, @PathParam("password") String password) {
         synchronized (this){
-            Investor i = new Investor(this.idCounter.incrementAndGet(), name, password,zone);
+            Investor i = new Investor(this.idCounter.incrementAndGet(), name, password,"NDEF");
             this.investors.put(name, i);
             writeInvestors();
             writeCounter();
