@@ -15,19 +15,18 @@ init()->
 
 %Users = #{ quim => {id, pass, investor}, pedro => {id, pass2,investor} , ...}
 accounts( Map, NextId )->
-
     receive
         { verify , Username, Passwd, Type, Pid } ->
-            case maps:find( Username, Map) of
+            case maps:find( Username, Map ) of
                 {ok, { Id, Passwd, Type} } ->
-                    Pid ! {ok, Id } ;
+                    Pid ! {ok, Id, Type } ;
                 _ ->
                     Pid ! error
                 
             end;
 
         { create, Username, Passwd, Type, Pid} ->
-            
+
             case maps:is_key(Username, Map) of
                 true ->
                     Pid ! error;

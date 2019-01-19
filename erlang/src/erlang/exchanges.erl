@@ -93,7 +93,7 @@ createExchanges( [ Port | Tail ], Context, Pids ) ->
 %% return Pid 
 getExchange( List , Company ) ->
 
-    Size = lists:size( List ),
+    Size = length( List ),
     
     Index = Company rem Size,
   
