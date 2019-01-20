@@ -17,8 +17,8 @@ parseUsers( List, Map ) ->
        [ _ | [ Name |  [_ | [Pass | [_ | [IsInvestor | [ _ |[ Id |T]]]]]]]] = List,
     
     case string:prefix( IsInvestor, "false") of
-        nomatch -> Type = company;
-        _ -> Type = investor
+        nomatch -> Type = investor;
+        _ -> Type = company
     end,
     FinalName = string:strip( Name, both, $"),
     FinalPass = string:strip( Pass, both, $"),

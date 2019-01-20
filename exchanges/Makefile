@@ -33,3 +33,8 @@ run:
 
 client:
 	java -cp "./bin/:$(LIBS)" Client.Main
+
+ARGS ?= 9901 9902
+
+proxy:
+	java -cp "./bin/:$(LIBS)" Proxy.Broker $(ARGS)

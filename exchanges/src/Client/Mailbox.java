@@ -4,10 +4,13 @@ import Exchanges.Protos;
 import org.zeromq.ZMQ;
 
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -34,6 +37,8 @@ public class Mailbox {
 
     // Unbounded queue that holds any received, yet to be read, notifications
     private final ConcurrentLinkedQueue< String > notifications = new ConcurrentLinkedQueue<>();
+
+    private final Set<String> subscriptions = new HashSet<>();
 
     private boolean waitingResponse = true;
 
@@ -145,12 +150,20 @@ public class Mailbox {
         return list;
     }
 
+    public List<String> getSubscriptions () {
+        return new ArrayList<>( this.subscriptions );
+    }
+
     public void subscribe ( int topic ) {
         this.subscribe( Integer.toString( topic ) );
     }
 
     public void subscribe ( String topic ) {
-        this.commandsSocketWriter.send( "sub " + topic );
+        if ( !this.subscriptions.contains( topic ) ) {
+            this.subscriptions.add( topic );
+
+            this.commandsSocketWriter.send( "sub " + topic );
+        }
     }
 
     public void unsubscribe ( int topic ) {
@@ -158,7 +171,11 @@ public class Mailbox {
     }
 
     public void unsubscribe ( String topic ) {
-        this.commandsSocketWriter.send( "unsub " + topic );
+        if ( this.subscriptions.contains( topic ) ) {
+            this.subscriptions.remove( topic );
+
+            this.commandsSocketWriter.send( "unsub " + topic );
+        }
     }
 
     // Runs in the auxiliary thread; beware of parallelism
@@ -264,6 +281,10 @@ public class Mailbox {
 
                 this.onMessage( Protos.ServerResponse.parseFrom( b2 ) );
             }
+        } catch ( EOFException e ) {
+            System.out.println( "Conexão terminada." );
+
+            System.exit( 0 );
         } catch ( Exception e ) {
             e.printStackTrace();
         }

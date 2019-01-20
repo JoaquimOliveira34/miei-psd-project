@@ -8,24 +8,30 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DirectoryClient {
-    private int          port;
-    private String       address;
-    private OkHttpClient client;
+    private int                    port;
+    private String                 address;
+    private OkHttpClient           client;
+    private Map< String, Integer > companyIds;
+    private Map< Integer, String > companyNames;
 
     public DirectoryClient ( String address, int port ) {
         this.address = address;
         this.port = port;
         this.client = new OkHttpClient();
+        this.companyIds = new HashMap<>();
+        this.companyNames = new HashMap<>();
     }
 
     protected String getResourceUrl ( String... segments ) {
         return String.format( "http://%s:%d/peerlending/%s", this.address, this.port, String.join( "/", segments ) );
     }
 
-    protected <T> List<T> readListOf ( String json, TypeReference<List<T>> type ) throws IOException {
+    protected < T > List< T > readListOf ( String json, TypeReference< List< T > > type ) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
 
         return mapper.readValue( json, type );
@@ -40,7 +46,7 @@ public class DirectoryClient {
         try ( Response response = client.newCall( request ).execute() ) {
             String string = response.body().string();
 
-            return readListOf( string, new TypeReference<List<Company>>(){} );
+            return readListOf( string, new TypeReference< List< Company > >() { } );
         }
     }
 
@@ -53,9 +59,52 @@ public class DirectoryClient {
         try ( Response response = client.newCall( request ).execute() ) {
             String string = response.body().string();
 
-            return readListOf( string, new TypeReference<List<Auction>>(){} );
+            return readListOf( string, new TypeReference< List< Auction > >() { } );
         }
     }
+
+    public Company getCompany ( String name ) throws IOException {
+        String url = this.getResourceUrl( "company", name );
+
+        Request request = new Request.Builder()
+                .url( url ).get().build();
+
+        try ( Response response = client.newCall( request ).execute() ) {
+            String string = response.body().string();
+
+            int code = response.code();
+
+            if ( code < 200 || code > 299 ) {
+                throw new IOException( "Cannot get company: HTTP " + code );
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+
+            return mapper.readValue( string, Company.class );
+        }
+    }
+
+    public int getCompanyId ( String name ) throws IOException {
+        if ( this.companyIds.containsKey( name.toLowerCase() ) ) {
+            return this.companyIds.get( name.toLowerCase() );
+        }
+
+        Company company = this.getCompany( name );
+
+        this.companyIds.put( company.getName().toLowerCase(), company.getId() );
+        this.companyNames.put( company.getId(), company.getName() );
+
+        return company.getId();
+    }
+
+    public String getCompanyName ( Integer id ) {
+        if ( this.companyNames.containsKey( id ) ) {
+            return this.companyNames.get( id );
+        }
+
+        return Integer.toString( id );
+    }
+
 
     // -- Entities
     @JsonIgnoreProperties( ignoreUnknown = true )
@@ -124,7 +173,7 @@ public class DirectoryClient {
         private double maxInterestRate;
         private boolean closed = false;
 
-        private List< AuctionBidding >         biddings = null;
+        private List< AuctionBidding > biddings = null;
 
         private Auction () {}
 

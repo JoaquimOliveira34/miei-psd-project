@@ -13,11 +13,15 @@ import java.util.concurrent.TimeUnit;
 interface ExchangeController {
     void auctionCreated ( Auction auction );
 
+    void auctionBid ( Auction auction, AuctionBidding bidding );
+
     void auctionClosed ( int company, boolean success, List< AuctionBidding > biddings );
 
     void auctionBiddingInvalidated ( int company, int investor, AuctionBidding lowest );
 
     void emissionCreated ( Emission emission );
+
+    void emissionSubscribed ( Emission emission, EmissionSubscription subscription );
 
     void emissionClosed ( int company, List< EmissionSubscription > subscriptions );
 
@@ -138,8 +142,14 @@ public class Exchange {
 
         Collection< AuctionBidding > invalidated = auction.bid( investor, amount, rate );
 
-        for ( AuctionBidding bidding : invalidated ) {
-            this.controller.auctionBiddingInvalidated( company, bidding.getInvestor(), auction.getLowestBid() );
+        if ( this.controller != null ) {
+            synchronized ( this.controller ) {
+                this.controller.auctionBid( auction, new AuctionBidding( investor, amount, rate ) );
+
+                for ( AuctionBidding bidding : invalidated ) {
+                    this.controller.auctionBiddingInvalidated( company, bidding.getInvestor(), auction.getLowestBid() );
+                }
+            }
         }
     }
 
@@ -248,7 +258,13 @@ public class Exchange {
 
         Emission emission = this.emissions.get( company );
 
-        emission.subscribe( investor, amount );
+        EmissionSubscription subscription = emission.subscribe( investor, amount );
+
+        if ( this.controller != null ) {
+            synchronized ( this.controller ) {
+                this.controller.emissionSubscribed( emission, subscription );
+            }
+        }
     }
 
     public void closeEmission ( int company ) throws ExchangeException {

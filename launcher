@@ -4,6 +4,7 @@ cleanup_ports () {
     PORTS+=$'\n'$(lsof -n -i4TCP:11102)
     PORTS+=$'\n'$(lsof -n -i :8080)
     PORTS+=$'\n'$(lsof -n -i :12345)
+    PORTS+=$'\n'$(lsof -n -i :9901)
 
     PORTS=$(echo "$PORTS" | grep LISTEN | awk '{ print $2 }')
 
@@ -11,15 +12,13 @@ cleanup_ports () {
         echo "Killing $PORTS"
         echo $PORTS | xargs kill
     fi
-#    lsof -n -i4TCP:11102 | grep LISTEN | awk '{ print $2 }' | xargs kill
-#    lsof -n -i4TCP:8080  | grep LISTEN | awk '{ print $2 }' | xargs kill
 }
 
 cleanup () {
     # A string %1 é expandida para o PID do primeiro processo interno lançado por esta script,
     # A string %2 é expandida para o segundo, e por aí fora
-    kill %1; kill %2; kill %3;
-    # Não precisamos de fazer kill %4 pois o REST não foi iniciado em background (com o "&" no fim do comando)
+    kill %1; kill %2; kill %3; kill %4;
+    # Não precisamos de fazer kill %5 pois o REST não foi iniciado em background (com o "&" no fim do comando)
     # E como tal quando o terminal recebe CTRL+C termina esse último processo automaticamente
 
     # Por alguma razão, matar as exchanges não chega para matar os processos que fazem bind das suas portas
@@ -36,6 +35,9 @@ trap 'cleanup' SIGINT
 cd exchanges
 make run ARGS="11101 9999 21101 localhost 8080" | sed -e 's/^/[EXCHANGE 1] /' & 
 make run ARGS="11102 9999 21102 localhost 8080" | sed -e 's/^/[EXCHANGE 2] /' &
+
+# Corre o proxy XSUB/XPUB em background
+make proxy ARGS="9901 9902 21101 21102" | sed -e 's/^/[PROXY] /' &
 
 # Corre o REST em background
 cd ../rest

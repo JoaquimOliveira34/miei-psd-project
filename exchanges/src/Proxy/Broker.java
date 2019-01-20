@@ -14,8 +14,13 @@ public class Broker {
         ZMQ.Context context = ZMQ.context(1);
         ZMQ.Socket pubs = context.socket(ZMQ.XSUB);
         ZMQ.Socket subs = context.socket(ZMQ.XPUB);
-        pubs.bind("tcp://*:"+args[0]);
-        subs.bind("tcp://*:"+args[1]);
+        pubs.bind("tcp://localhost:"+args[0]);
+        subs.bind("tcp://localhost:"+args[1]);
+
+        for ( int i = 2; i < args.length; i++ ) {
+            pubs.connect( "tcp://localhost:" + args[ i ] );
+        }
+
         new Proxy(context, pubs, subs).poll();
     }
 }

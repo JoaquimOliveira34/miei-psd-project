@@ -60,8 +60,17 @@ public class ZMQExchangeController implements ExchangeController {
         this.exchange = new Exchange( directory, this );
     }
 
+    private void debug ( String action, String message ) {
+        System.out.println( action + "------------" );
+        System.out.println( message );
+    }
+
     private void publish ( int company, String message ) {
-        this.publisher.send( Protos.Notification.newBuilder().setCompany( company ).setMessage( message ).build().toByteArray() );
+        String string = String.format( "<comp:%d> %s", company, message );
+
+        this.debug( "Publishing", string );
+
+        this.publisher.send( string );
     }
 
     private void publish ( int company, String format, Object... args ) {
@@ -72,12 +81,17 @@ public class ZMQExchangeController implements ExchangeController {
     public void auctionCreated ( Auction auction ) {
         this.sendReply( auction.getCompany(), "Auction created successfully." );
 
-        this.publish( auction.getCompany(), "Auction created with ammount %d and max interest rate %f.", auction.getAmount(), auction.getMaxInterestRate() );
+        this.publish( auction.getCompany(), "Auction created for company <comp:%d> with ammount %d and max interest rate %f.", auction.getCompany(), auction.getAmount(), auction.getMaxInterestRate() );
+    }
+
+    @Override
+    public void auctionBid ( Auction auction, AuctionBidding bidding ) {
+        this.publish( auction.getCompany(), "Auction for company <comp:%d> new bid with ammount %d and rate %f.", auction.getCompany(), bidding.getAmount(), bidding.getInterestRate() );
     }
 
     @Override
     public void auctionBiddingInvalidated ( int company, int investor, AuctionBidding lowest ) {
-        this.sendReply( investor, String.format( "Your bidding for company %d was invalidated, lowest is now %d, %f.", company, lowest.getAmount(), lowest.getInterestRate() ) );
+        this.sendReply( investor, String.format( "Your bidding for company <comp:%d> was invalidated, lowest is now %d, %f.", company, lowest.getAmount(), lowest.getInterestRate() ) );
     }
 
     @Override
@@ -87,26 +101,32 @@ public class ZMQExchangeController implements ExchangeController {
             this.publish( company, "Auction closed with enough biddings." );
 
             for ( AuctionBidding bidding : biddings ) {
-                this.sendReply( bidding.getInvestor(), String.format( "Auction closed successfully at company %d. Your bidding of %d at %f was approved.", company, bidding.getAmount(), bidding.getInterestRate() ) );
+                this.sendReply( bidding.getInvestor(), String.format( "Auction closed successfully at company <comp:%d>. Your bidding of %d at %f was approved.", company, bidding.getAmount(), bidding.getInterestRate() ) );
             }
         } else {
             this.sendReply( company, "Auction closed without enough biddings." );
             this.publish( company, "Auction closed without enough biddings." );
 
             for ( AuctionBidding bidding : biddings ) {
-                this.sendReply( bidding.getInvestor(), String.format( "Auction closed unsuccessfully at company %d. Your bidding of %d at %f was invalidated.", company, bidding.getAmount(), bidding.getInterestRate() ) );
+                this.sendReply( bidding.getInvestor(), String.format( "Auction closed unsuccessfully at company <comp:%d>. Your bidding of %d at %f was invalidated.", company, bidding.getAmount(), bidding.getInterestRate() ) );
             }
         }
     }
 
     @Override
     public void emissionCreated ( Emission emission ) {
-        this.publish( emission.getCompany(), "Emission created with ammount %d and fixed interest rate %f.", emission.getAmount(), emission.getInterestRate() );
+        this.sendReply( emission.getCompany(), "Emission created successfully." );
+        this.publish( emission.getCompany(), "Emission created for company <comp:%d> with ammount %d and fixed interest rate %f.", emission.getCompany(), emission.getAmount(), emission.getInterestRate() );
+    }
+
+    @Override
+    public void emissionSubscribed ( Emission emission, EmissionSubscription subscription ) {
+        this.publish( emission.getCompany(), "Emission for company <comp:%d> new subscription with ammount %d.", emission.getCompany(), subscription.getAmount() );
     }
 
     @Override
     public void emissionClosed ( int company, List< EmissionSubscription > subscriptions ) {
-        this.publish( company, "Emission closed with %d collected.", subscriptions.stream().mapToInt( EmissionSubscription::getAmount ).sum() );
+        this.publish( company, "Emission closed for company <comp:%d> with %d collected.", company, subscriptions.stream().mapToInt( EmissionSubscription::getAmount ).sum() );
     }
 
     @Override
@@ -144,7 +164,7 @@ public class ZMQExchangeController implements ExchangeController {
                 .setResponse( response )
                 .build();
 
-        System.out.println( msg );
+        this.debug( "Outgoing", msg.toString() );
 
         this.pushSocket.send( msg.toByteArray() );
     }
@@ -182,7 +202,7 @@ public class ZMQExchangeController implements ExchangeController {
                 try {
                     Protos.MsgExchange message = Protos.MsgExchange.parseFrom( bytes );
 
-                    System.out.println( message );
+                    this.debug( "Incoming", message.toString() );
 
                     // Can receive two types of messages from the same socket: decide which one it is and call the
                     // appropriate method
@@ -213,6 +233,8 @@ public class ZMQExchangeController implements ExchangeController {
                 byte[] bytes = schedulerSocket.recv( ZMQ.DONTWAIT );
 
                 int company = byteArrayToInt( bytes );
+
+                this.debug( "Incoming Close", Integer.toString( company ) );
 
                 try {
                     if ( this.exchange.hasAuctionFor( company ) ) {

@@ -83,11 +83,11 @@ public class Emission {
         return this.getSubscribedAmount() == this.amount * 10;
     }
 
-    public void subscribe ( int investor, int amount ) throws ExchangeException {
-        this.subscribe( new EmissionSubscription( investor, amount ) );
+    public EmissionSubscription subscribe ( int investor, int amount ) throws ExchangeException {
+        return this.subscribe( new EmissionSubscription( investor, amount ) );
     }
 
-    public void subscribe ( EmissionSubscription subscription ) throws ExchangeException {
+    public EmissionSubscription subscribe ( EmissionSubscription subscription ) throws ExchangeException {
         // If an investor is subscribing to an emission he has already subscribed to
         // We want to subtract the amount he already subscribed when cehcking if the subscription
         // goes overboard the total amount of the emission
@@ -102,6 +102,8 @@ public class Emission {
         }
 
         this.subscriptions.put( subscription.getInvestor(), subscription );
+
+        return subscription;
     }
 
     public List< EmissionSubscription > close () {

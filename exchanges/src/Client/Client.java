@@ -3,21 +3,25 @@ package Client;
 import Exchanges.Protos;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class Client {
 
     enum State {
-        INVESTOR ,
+        INVESTOR,
         COMPANY,
         NONE
     }
 
-    private static final Menu menuWithoutLogin = new Menu( new String[] { "Login", "Criar conta", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões"});
-    private static final Menu menuInvestors =  new Menu( new String[]   { "Licitar", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões", "Ler Mensagens", "Ler Notificações"});
-    private static final Menu menuCompanys = new Menu( new String[]     { "Criar leila", "Criar leilao com taxa fixa", "Subscrever", "Minhas subscrições", "Listar empresas", "Listar leilões", "Ler Mensagens", "Ler Notificações"});
+    private static final Menu menuWithoutLogin = new Menu( new String[] { "Login", "Criar conta", "Subscrever", "De-Subscrever Notificaçoes", "Minhas subscrições", "Listar empresas", "Listar leilões" } );
+    private static final Menu menuInvestors    = new Menu( new String[] { "Licitar", "Subscrever Emissao Taxa Fixa", "Subscrever Notificaçoes", "De-Subscrever Notificaçoes", "Minhas subscrições", "Listar empresas", "Listar leilões", } );
+    private static final Menu menuCompanys     = new Menu( new String[] { "Criar leila", "Criar leilao com taxa fixa", "Subscrever Notificaçoes", "De-Subscrever Notificaçoes", "Minhas subscrições", "Listar empresas", "Listar leilões", } );
 
     private final Scanner s;
 
@@ -27,11 +31,11 @@ public class Client {
 
     private DirectoryClient directory;
 
-    Client( int serverAddress, int  proxyAddress) throws IOException {
+    Client ( int serverAddress, int proxyAddress ) throws IOException {
 
         /////////////////// Initiations  ///////////////////
 
-        s = new Scanner( System.in);
+        s = new Scanner( System.in );
 
         state = State.NONE;
 
@@ -44,45 +48,35 @@ public class Client {
         this.middleware.getMailbox().setOnReceive( this::onReceiveMessage );
 
         /////////////////// Start ///////////////////
-        boolean flag = true ;
+        boolean flag = true;
 
-        while( flag ) {
+        while ( flag ) {
 
-            switch ( state ){
-                case NONE:
-                    showMenuWithoutLogin();
-                    break;
-                case COMPANY:
-                    showMenuCompanys();
-                    break;
-                case INVESTOR:
-                    showMenuInvestors();
-                    break;
+            try {
+                switch ( state ) {
+                    case NONE:
+                        showMenuWithoutLogin();
+                        break;
+                    case COMPANY:
+                        showMenuCompanys();
+                        break;
+                    case INVESTOR:
+                        showMenuInvestors();
+                        break;
+
+                }
+            } catch ( Exception error ) {
+                System.out.println( "[CLIENT ERROR] " + error.getMessage() );
             }
         }
 
         middleware.close();
     }
 
-    // TODO Question: Should loggout and logging in with a different account do a reset of notifications an messages?
-    private void showMenuHeader () {
-        int messages = this.middleware.getMailbox().getMessageCount();
-        int notifications = this.middleware.getMailbox().getNotificationsCount();
+    private void showMenuInvestors () throws IOException {
+        System.out.println( menuInvestors.toString() );
 
-        if ( messages > 0 && notifications > 0 ) {
-            System.out.printf( "**** (%d mensagens por ler, %d notificaçoes por ler) ****\n", messages, notifications );
-        } else if ( messages > 0 ) {
-            System.out.printf( "**** (%d mensagens por ler) ****\n", messages );
-        } else if ( notifications > 0 ) {
-            System.out.printf( "**** (%d notificaçoes por ler) ****\n", notifications );
-        }
-    }
-
-    private void showMenuInvestors() throws IOException {
-        this.showMenuHeader();
-        System.out.println( menuInvestors.toString());
-
-        switch (menuInvestors.getOption() ){
+        switch ( menuInvestors.getOption() ) {
             case 0:
                 toAuction();
                 break;
@@ -90,30 +84,30 @@ public class Client {
                 toEmission();
                 break;
             case 2:
-                listsubscriptions();
+                subscribe();
                 break;
             case 3:
-                listCompanies();
+                unsubscribe();
                 break;
             case 4:
-                listCompanies();
+                listSubscriptions();
                 break;
             case 5:
-                listAuctions();
+                listCompanies();
                 break;
             case 6:
-                listMessages();
+                listCompanies();
                 break;
             case 7:
-                listNotifications();
+                listAuctions();
+                break;
         }
     }
 
-    private void showMenuCompanys() throws IOException {
-        this.showMenuHeader();
-        System.out.println( menuCompanys.toString());
+    private void showMenuCompanys () throws IOException {
+        System.out.println( menuCompanys.toString() );
 
-        switch ( menuCompanys.getOption() ){
+        switch ( menuCompanys.getOption() ) {
             case 0:
                 createAuction();
                 break;
@@ -124,27 +118,25 @@ public class Client {
                 subscribe();
                 break;
             case 3:
-                listsubscriptions();
+                unsubscribe();
                 break;
             case 4:
-                listCompanies();
+                listSubscriptions();
                 break;
             case 5:
-                listAuctions();
+                listCompanies();
                 break;
             case 6:
-                listMessages();
+                listAuctions();
                 break;
-            case 7:
-                listNotifications();
         }
     }
 
-    private void showMenuWithoutLogin() throws IOException {
+    private void showMenuWithoutLogin () throws IOException {
 
-        System.out.println(  menuWithoutLogin.toString() );
+        System.out.println( menuWithoutLogin.toString() );
 
-        switch (menuWithoutLogin.getOption() ){
+        switch ( menuWithoutLogin.getOption() ) {
             case 0:
                 makeLogin();
                 break;
@@ -155,12 +147,15 @@ public class Client {
                 subscribe();
                 break;
             case 3:
-                listsubscriptions();
+                unsubscribe();
                 break;
             case 4:
-                listCompanies();
+                listSubscriptions();
                 break;
             case 5:
+                listCompanies();
+                break;
+            case 6:
                 listAuctions();
                 break;
         }
@@ -170,61 +165,61 @@ public class Client {
     //////////////// Messages & Notifications /////////////////
     private void onReceiveMessage () {
         for ( String line : this.middleware.getMailbox().readMessages() ) {
-            System.out.println( "[msg] " + line );
+            System.out.println( "[msg] " + transformMessage( line ) );
         }
 
         for ( String line : this.middleware.getMailbox().readNotifications() ) {
-            System.out.println( "[sub] " + line );
+            System.out.println( "[sub] " + transformMessage( line ) );
         }
     }
 
     //////////////// Actions /////////////////
 
-    private void createFixedInterestAuction() throws IOException {
-        System.out.print("Qual a quantidade de dinheiro a emitir: ");
+    private void createFixedInterestAuction () throws IOException {
+        System.out.print( "Qual a quantidade de dinheiro a emitir: " );
         int amount = Integer.parseInt( s.nextLine() );
 
         this.middleware.sendMsgCompany( Protos.MsgCompany.Type.FIXEDRATE, amount );
     }
 
-    private void createAuction() throws IOException {
-        System.out.print("Qual a quantidade de dinheiro a pedir em leilao: ");
+    private void createAuction () throws IOException {
+        System.out.print( "Qual a quantidade de dinheiro a pedir em leilao: " );
         int amount = Integer.parseInt( s.nextLine() );
 
-        System.out.print("Qual a taxa de juros maxima do leilao: ");
+        System.out.print( "Qual a taxa de juros maxima do leilao: " );
         float rate = Float.parseFloat( s.nextLine() );
 
         this.middleware.sendMsgCompany( Protos.MsgCompany.Type.AUCTION, amount, rate );
     }
 
-    private void toAuction() throws IOException {
-        System.out.print("Qual a empresa a licitar: ");
-        int company = Integer.parseInt( s.nextLine() );
+    private void toAuction () throws IOException {
+        System.out.print( "Qual a empresa a licitar: " );
+        int company = this.directory.getCompanyId( s.nextLine() );
 
-        System.out.print("Qual a quantidade de dinheiro a licitar: ");
+        System.out.print( "Qual a quantidade de dinheiro a licitar: " );
         int amount = Integer.parseInt( s.nextLine() );
 
-        System.out.print("Qual a taxa de juros da licitaçao: ");
+        System.out.print( "Qual a taxa de juros da licitaçao: " );
         float rate = Float.parseFloat( s.nextLine() );
 
         this.middleware.sendMsgInvestor( company, amount, rate );
     }
 
-    private void toEmission() throws IOException {
-        System.out.print("Qual a empresa a subscrever emissao taxa fixa: ");
-        int company = Integer.parseInt( s.nextLine() );
+    private void toEmission () throws IOException {
+        System.out.print( "Qual a empresa a subscrever emissao taxa fixa: " );
+        int company = this.directory.getCompanyId( s.nextLine() );
 
-        System.out.print("Qual a quantidade de dinheiro a subscrever: ");
+        System.out.print( "Qual a quantidade de dinheiro a subscrever: " );
         int amount = Integer.parseInt( s.nextLine() );
 
         this.middleware.sendMsgInvestor( company, amount );
     }
 
-    private void listAuctions() {
+    private void listAuctions () {
 
     }
 
-    private void listCompanies() {
+    private void listCompanies () {
         try {
             List< DirectoryClient.Company > companies = this.directory.listCompanies();
 
@@ -242,106 +237,124 @@ public class Client {
         }
     }
 
-    private void listsubscriptions() {
+    private void listSubscriptions () {
+        System.out.println( "#### Subscriçoes ####" );
 
-    }
+        List< String > subscriptions = this.middleware.getMailbox().getSubscriptions();
 
-    private void listMessages () {
-        System.out.println( "#### Mensagens ####" );
-
-        List<String> messages = this.middleware.getMailbox().readMessages();
-
-        if ( messages.size() == 0 ) {
-            System.out.println( "---- Sem mensagens para ler... ----" );
+        if ( subscriptions.size() == 0 ) {
+            System.out.println( "---- Sem subscricoes ativas... ----" );
         }
 
-        for ( int i = 0; i < messages.size(); i++ ) {
-            System.out.printf( "%d: %s\n", i + 1, messages.get( i ) );
+        for ( String sub : subscriptions ) {
+            System.out.println( " - " + transformMessage( sub ) );
         }
     }
 
-    private void listNotifications () {
-        System.out.println( "#### Notificações ####" );
+    private void subscribe () {
+        try {
+            System.out.println( "Qual a empresa a que quer subscrever? " );
+            int company = this.directory.getCompanyId( s.nextLine() );
 
-        List<String> notifications = this.middleware.getMailbox().readNotifications();
+            this.middleware.getMailbox().subscribe( String.format( "<comp:%d>", company ) );
+        } catch ( IOException e ) {
+            System.out.println( "A empresa nao foi encontrada." );
 
-        if ( notifications.size() == 0 ) {
-            System.out.println( "---- Sem notificações para ler... ----" );
-        }
-
-        for ( int i = 0; i < notifications.size(); i++ ) {
-            System.out.printf( "%d: %s\n", i + 1, notifications.get( i ) );
+            e.printStackTrace();
         }
     }
 
-    private void subscribe() {
+    private void unsubscribe () {
+        try {
+            System.out.println( "Qual a empresa a que quer de-subscrever? " );
+            int company = this.directory.getCompanyId( s.nextLine() );
 
+            this.middleware.getMailbox().unsubscribe( String.format( "<comp:%d>", company ) );
+        } catch ( IOException e ) {
+            System.out.println( "A empresa nao foi encontrada." );
+
+            e.printStackTrace();
+        }
     }
 
-
-    private void createAccount() throws IOException {
+    private void createAccount () throws IOException {
 
         Protos.Authentication.UserType type;
 
-        System.out.print("Pretende criar um investior ( escolha \"1\") ou uma empresa ( outra letra ): ");
-        char option = s.nextLine().charAt(0);
+        System.out.print( "Pretende criar um investior ( escolha \"1\") ou uma empresa ( outra letra ): " );
+        char option = s.nextLine().charAt( 0 );
 
-        if( option == '1')
-            type = Protos.Authentication.UserType.INVESTOR;
-        else
+        if ( option == '1' ) { type = Protos.Authentication.UserType.INVESTOR; } else {
             type = Protos.Authentication.UserType.COMPANY;
+        }
 
-        System.out.print("Nome de utilizador: ");
+        System.out.print( "Nome de utilizador: " );
         String username = s.nextLine();
 
-        System.out.print("Palavra passe: ");
+        System.out.print( "Palavra passe: " );
         String password = s.nextLine();
 
-        middleware.sendAuthentication( type, Protos.Authentication.CredentialsType.REGISTER, username, password);
+        middleware.sendAuthentication( type, Protos.Authentication.CredentialsType.REGISTER, username, password );
 
         Protos.ServerResponse response = middleware.getMailbox().readResponse();
 
-        if ( response.hasError() )
-            System.out.println("Invalido, tente novamente.");
-        else
-            System.out.println("Conta criada com sucesso. ");
+        if ( response.hasError() ) { System.out.println( "Invalido, tente novamente." ); } else {
+            System.out.println( "Conta criada com sucesso. " );
+        }
     }
 
-    private void makeLogin() throws IOException {
-        System.out.print("Investidor ( 1 )  Empresa ( 2 ): ");
-        char option = s.nextLine().charAt(0);
+    private void makeLogin () throws IOException {
+        System.out.print( "Investidor ( 1 )  Empresa ( 2 ): " );
+        char                           option = s.nextLine().charAt( 0 );
         Protos.Authentication.UserType type;
-        if( option == '1')
-            type = Protos.Authentication.UserType.INVESTOR;
-        else
+        if ( option == '1' ) { type = Protos.Authentication.UserType.INVESTOR; } else {
             type = Protos.Authentication.UserType.COMPANY;
+        }
 
-        System.out.print("Nome de utilizador: ");
+        System.out.print( "Nome de utilizador: " );
         String username = s.nextLine();
 
-        System.out.print("Palavra passe : ");
+        System.out.print( "Palavra passe : " );
         String password = s.nextLine();
 
-        middleware.sendAuthentication(type, Protos.Authentication.CredentialsType.LOGIN, username,password);
+        middleware.sendAuthentication( type, Protos.Authentication.CredentialsType.LOGIN, username, password );
 
-        System.out.println("Enviado");
+        System.out.println( "Enviado" );
 
         Protos.ServerResponse response = middleware.getMailbox().readResponse();
 
-        if( response.hasError() )
-            System.out.println("Invalido, tente novamente.");
-        else {
-            System.out.println("Login aceite, bem vindo. ");
+        if ( response.hasError() ) { System.out.println( "Invalido, tente novamente." ); } else {
+            System.out.println( "Login aceite, bem vindo. " );
 
-            if( type.equals( Protos.Authentication.UserType.COMPANY ))
-                state = State.COMPANY;
-            else
+            if ( type.equals( Protos.Authentication.UserType.COMPANY ) ) { state = State.COMPANY; } else {
                 state = State.INVESTOR;
+            }
 
             this.middleware.getMailbox().setWaitingResponse( false );
         }
     }
 
+    //////////////// HELPER FUNCTIONS /////////////////
+    public String transformMessage ( String message ) {
+        Pattern pattern = Pattern.compile( "<comp:([0-1]+)>" );
+        Matcher m       = pattern.matcher( message );
+
+        Set< Integer > ids = new HashSet<>();
+
+        while ( m.find() ) {
+            ids.add( Integer.parseInt( m.group( 1 ) ) );
+        }
+
+        String transformed = message;
+
+        for ( Integer id : ids ) {
+            String name = this.directory.getCompanyName( id );
+
+            transformed = transformed.replaceAll( "<comp:" + id + ">", name );
+        }
+
+        return transformed;
+    }
 }
 
 

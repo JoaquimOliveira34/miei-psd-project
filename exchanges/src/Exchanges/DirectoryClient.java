@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.function.Supplier;
 
 /*
 GET /empresas
@@ -126,10 +125,10 @@ class JsonBuilder {
 }
 
 public class DirectoryClient {
-    private int          port;
-    private String       address;
-    private OkHttpClient client;
-    private ExecutorService threadPool;
+    private int                    port;
+    private String                 address;
+    private OkHttpClient           client;
+    private ExecutorService        threadPool;
 
     public DirectoryClient ( String address, int port ) {
         this.address = address;
@@ -142,7 +141,7 @@ public class DirectoryClient {
     }
 
     @FunctionalInterface
-    interface IOSupplier<T> {
+    interface IOSupplier < T > {
         T get () throws IOException;
     }
 
@@ -151,7 +150,7 @@ public class DirectoryClient {
         void run () throws IOException;
     }
 
-    private CompletableFuture<Void> executeAsync ( IORunnable runnable ) {
+    private CompletableFuture< Void > executeAsync ( IORunnable runnable ) {
         return this.executeAsync( () -> {
             runnable.run();
 
@@ -159,8 +158,8 @@ public class DirectoryClient {
         } );
     }
 
-    private <T> CompletableFuture<T> executeAsync ( IOSupplier<T> supplier ) {
-        CompletableFuture<T> future = new CompletableFuture<>();
+    private < T > CompletableFuture< T > executeAsync ( IOSupplier< T > supplier ) {
+        CompletableFuture< T > future = new CompletableFuture<>();
 
         this.threadPool.execute( () -> {
             try {
@@ -286,27 +285,27 @@ public class DirectoryClient {
 
 
     // ASYNC METHODS
-    public CompletableFuture<Auction> createAuctionAsync ( Auction auction ) {
+    public CompletableFuture< Auction > createAuctionAsync ( Auction auction ) {
         return this.createAuctionAsync( auction.getCompany(), auction.getAmount(), auction.getMaxInterestRate() );
     }
 
-    public CompletableFuture<Auction> createAuctionAsync ( final int company, final int amount, final double maxInterestRate ) {
+    public CompletableFuture< Auction > createAuctionAsync ( final int company, final int amount, final double maxInterestRate ) {
         return this.executeAsync( () -> this.createAuction( company, amount, maxInterestRate ) );
     }
 
-    public CompletableFuture<Void> closeAuctionAsync ( Auction auction, List< AuctionBidding > biddings ) {
+    public CompletableFuture< Void > closeAuctionAsync ( Auction auction, List< AuctionBidding > biddings ) {
         return this.executeAsync( () -> this.closeAuction( auction, biddings ) );
     }
 
-    public CompletableFuture<Emission> createEmissionAsync ( Emission emission ) {
+    public CompletableFuture< Emission > createEmissionAsync ( Emission emission ) {
         return this.createEmissionAsync( emission.getCompany(), emission.getAmount(), emission.getInterestRate() );
     }
 
-    public CompletableFuture<Emission> createEmissionAsync ( final int company, final int amount, final double interestRate ) {
+    public CompletableFuture< Emission > createEmissionAsync ( final int company, final int amount, final double interestRate ) {
         return this.executeAsync( () -> this.createEmission( company, amount, interestRate ) );
     }
 
-    public CompletableFuture<Void> closeEmissionAsync ( Emission emission, List< EmissionSubscription > subscribed ) {
+    public CompletableFuture< Void > closeEmissionAsync ( Emission emission, List< EmissionSubscription > subscribed ) {
         return this.executeAsync( () -> this.closeEmission( emission, subscribed ) );
     }
 }
