@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Path("/peerlending")
 @Produces(MediaType.APPLICATION_JSON)
-public class test implements Serializable {
+public class peerlending implements Serializable {
     public static class ResourcesStorage<T> {
         private String name;
 
@@ -83,7 +83,7 @@ public class test implements Serializable {
         return this.companies.values().stream().filter( company -> company.getId() == id ).findFirst().orElse( null );
     }
 
-    public test(){
+    public peerlending(){
         this.companies = this.companiesStorage.load().orElse( new HashMap<>() );
         this.investors = this.investorsStorage.load().orElse( new HashMap<>(  ) );
         this.auctions = this.auctionsStorage.load().orElse( new HashMap<>(  ) );
@@ -192,6 +192,21 @@ public class test implements Serializable {
         if (c == null)
             return Response.status (Response.Status.NOT_FOUND).build();
         else return Response.ok(c).build();
+
+    }
+
+    @GET
+    @Path("/company/id/{id}")
+    public Response getCompanyWithId(@PathParam("id") String id) {
+        int cid = Integer.parseInt(id);
+        Company c;
+        synchronized (this) {
+            c = this.getCompanyById(cid);
+            if (c == null)
+                return Response.status (Response.Status.NOT_FOUND).build();
+            else return Response.ok(c).build();
+        }
+
 
     }
 

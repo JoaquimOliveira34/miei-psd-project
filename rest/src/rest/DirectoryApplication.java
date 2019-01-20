@@ -4,7 +4,7 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.dropwizard.Application;
 import rest.health.TemplateHealthCheck;
-import rest.resources.test;
+import rest.resources.peerlending;
 
 public class DirectoryApplication extends Application<DirectoryConfiguration>{
     public static void main(String[] args) throws Exception {
@@ -21,7 +21,7 @@ public class DirectoryApplication extends Application<DirectoryConfiguration>{
     public void run(DirectoryConfiguration configuration,
                     Environment environment) {
         environment.jersey().register(
-                new test());
+                new peerlending());
         environment.healthChecks().register("template",
                 new TemplateHealthCheck(configuration.template));
     }
