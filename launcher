@@ -33,8 +33,8 @@ trap 'cleanup' SIGINT
 
 # De seguida corre as exchanges em background
 cd exchanges
-make run ARGS="11101 9999 21101 localhost 8080" | sed -e 's/^/[EXCHANGE 1] /' & 
-make run ARGS="11102 9999 21102 localhost 8080" | sed -e 's/^/[EXCHANGE 2] /' &
+make run ARGS="11101 9999 21101 localhost 8080 15" | sed -e 's/^/[EXCHANGE 1] /' & 
+make run ARGS="11102 9999 21102 localhost 8080 15" | sed -e 's/^/[EXCHANGE 2] /' &
 
 # Corre o proxy XSUB/XPUB em background
 make proxy ARGS="9901 9902 21101 21102" | sed -e 's/^/[PROXY] /' &

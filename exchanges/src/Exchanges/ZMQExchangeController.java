@@ -60,6 +60,10 @@ public class ZMQExchangeController implements ExchangeController {
         this.exchange = new Exchange( directory, this );
     }
 
+    public Exchange getExchange () {
+        return this.exchange;
+    }
+
     private void debug ( String action, String message ) {
         System.out.println( action + "------------" );
         System.out.println( message );
