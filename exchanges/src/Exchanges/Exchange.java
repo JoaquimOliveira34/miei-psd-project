@@ -1,10 +1,6 @@
 package Exchanges;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -55,6 +51,8 @@ public class Exchange {
     // The emissions HashMap contains the current (if any) emission for each company
     private Map< Integer, Emission >                    emissions = new ConcurrentHashMap<>();
     // Each company can only have either an emission or an auction running at a time; not both
+    private Set< Integer >                              companies = new HashSet<>();
+
 
     private DirectoryClient directory;
 
@@ -99,11 +97,34 @@ public class Exchange {
     }
 
 
+    public boolean hasCompany ( int id ) {
+        if ( this.companies.contains( id ) ) {
+            return true;
+        }
+
+        try {
+            boolean exists = this.directory.companyExists( id );
+
+            if ( exists ) {
+                this.companies.contains( id );
+            }
+
+            return exists;
+        } catch ( Exception e ) {
+            return false;
+        }
+    }
+
+
     public boolean hasAuctionFor ( int company ) {
         return this.auctions.containsKey( company );
     }
 
     public void createAuction ( int company, int amount, double maxInterestRate ) throws ExchangeException {
+        if ( !this.hasCompany( company ) ) {
+            throw new ExchangeException( ExchangeExceptionType.InvalidCompany );
+        }
+
         if ( this.hasAuctionFor( company ) ) {
             throw new ExchangeException( ExchangeExceptionType.DuplicateAuction );
         }
@@ -216,6 +237,10 @@ public class Exchange {
     }
 
     public void createEmission ( int company, int amount ) throws ExchangeException {
+        if ( !this.hasCompany( company ) ) {
+            throw new ExchangeException( ExchangeExceptionType.InvalidCompany );
+        }
+
         if ( this.hasEmissionFor( company ) ) {
             throw new ExchangeException( ExchangeExceptionType.DuplicateEmission );
         }

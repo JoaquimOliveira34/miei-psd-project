@@ -44,6 +44,12 @@ public class DirectoryClient {
                 .url( url ).get().build();
 
         try ( Response response = client.newCall( request ).execute() ) {
+            int code = response.code();
+
+            if ( code < 200 || code > 299 ) {
+                throw new IOException( "Cannot get company: HTTP " + code );
+            }
+
             String string = response.body().string();
 
             return readListOf( string, new TypeReference< List< Company > >() { } );
@@ -57,9 +63,34 @@ public class DirectoryClient {
                 .url( url ).get().build();
 
         try ( Response response = client.newCall( request ).execute() ) {
+            int code = response.code();
+
+            if ( code < 200 || code > 299 ) {
+                throw new IOException( "Cannot get company: HTTP " + code );
+            }
+
             String string = response.body().string();
 
             return readListOf( string, new TypeReference< List< Auction > >() { } );
+        }
+    }
+
+    public List< Emission > listEmissions () throws IOException {
+        String url = this.getResourceUrl( "emissions" );
+
+        Request request = new Request.Builder()
+                .url( url ).get().build();
+
+        try ( Response response = client.newCall( request ).execute() ) {
+            int code = response.code();
+
+            if ( code < 200 || code > 299 ) {
+                throw new IOException( "Cannot get company: HTTP " + code );
+            }
+
+            String string = response.body().string();
+
+            return readListOf( string, new TypeReference< List< Emission > >() { } );
         }
     }
 
@@ -70,13 +101,13 @@ public class DirectoryClient {
                 .url( url ).get().build();
 
         try ( Response response = client.newCall( request ).execute() ) {
-            String string = response.body().string();
-
             int code = response.code();
 
             if ( code < 200 || code > 299 ) {
                 throw new IOException( "Cannot get company: HTTP " + code );
             }
+
+            String string = response.body().string();
 
             ObjectMapper mapper = new ObjectMapper();
 
@@ -146,6 +177,8 @@ public class DirectoryClient {
         private int    amount;
         private double interestRate;
 
+        public AuctionBidding () {}
+
         public AuctionBidding ( int investor, int amount, double interestRate ) {
             this.investor = investor;
             this.amount = amount;
@@ -212,8 +245,111 @@ public class DirectoryClient {
             return this.closed;
         }
 
+        public boolean isOpen () {
+            return !this.isClosed();
+        }
+
         public List< AuctionBidding > getBiddings () {
             return this.biddings;
+        }
+    }
+
+
+
+    public static class EmissionSubscription {
+        private int investor;
+        private int amount;
+
+        public EmissionSubscription () {}
+
+        public EmissionSubscription ( int investor, int amount ) {
+            this.investor = investor;
+            this.amount = amount;
+        }
+
+        public int getInvestor () {
+            return investor;
+        }
+
+        public int getAmount () {
+            return amount;
+        }
+
+        public void setInvestor ( int investor ) {
+            this.investor = investor;
+        }
+
+        public void setAmount ( int amount ) {
+            this.amount = amount;
+        }
+    }
+
+    public static class Emission {
+        private int    id;
+        private int    company;
+        private int    amount;
+        private double interestRate;
+        private List<EmissionSubscription> subscriptions = null;
+
+        public Emission () {}
+
+        public Emission ( int id, int company, int amount, double interestRate ) {
+            this.id = id;
+            this.company = company;
+            this.amount = amount;
+            this.interestRate = interestRate;
+        }
+
+        public Emission ( int company, int amount, double interestRate ) {
+            this( -1, company, amount, interestRate );
+        }
+
+        public int getId () {
+            return this.id;
+        }
+
+        public void setId ( int id ) {
+            this.id = id;
+        }
+
+        public int getCompany () {
+            return company;
+        }
+
+        public int getAmount () {
+            return amount;
+        }
+
+        public double getInterestRate () {
+            return interestRate;
+        }
+
+        public List< EmissionSubscription > getSubscriptions () {
+            return subscriptions;
+        }
+
+        public void setCompany ( int company ) {
+            this.company = company;
+        }
+
+        public void setAmount ( int amount ) {
+            this.amount = amount;
+        }
+
+        public void setInterestRate ( double interestRate ) {
+            this.interestRate = interestRate;
+        }
+
+        public void setSubscriptions ( List< EmissionSubscription > subscriptions ) {
+            this.subscriptions = subscriptions;
+        }
+
+        public boolean isClosed () {
+            return this.subscriptions != null && this.subscriptions.size() > 0;
+        }
+
+        public boolean isOpen () {
+            return !this.isClosed();
         }
     }
 

@@ -140,6 +140,25 @@ public class DirectoryClient {
         this.threadPool = new ThreadPoolExecutor( 2, 16, 2, TimeUnit.SECONDS, new LinkedBlockingQueue<>() );
     }
 
+    public boolean companyExists ( int id ) throws IOException {
+        String url = this.getResourceUrl( "company", "id", Integer.toString( id ) );
+
+        Request request = new Request.Builder()
+                .url( url )
+                .get()
+                .build();
+
+        try ( Response response = client.newCall( request ).execute() ) {
+            int code = response.code();
+
+            if ( code < 200 || code > 299 ) {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
     @FunctionalInterface
     interface IOSupplier < T > {
         T get () throws IOException;
@@ -195,7 +214,7 @@ public class DirectoryClient {
 
             String string = response.body().string();
 
-            if ( code < 200 || code > 200 ) {
+            if ( code < 200 || code > 299 ) {
                 System.out.println( string + code );
             }
 
@@ -214,6 +233,7 @@ public class DirectoryClient {
                 .add( "company", auction.getCompany() )
                 .add( "amount", auction.getAmount() )
                 .add( "maxInterestRate", auction.getMaxInterestRate() )
+                .add( "closed", true )
                 .add( "biddings", biddings )
                 .build();
 
@@ -249,7 +269,7 @@ public class DirectoryClient {
 
             String string = response.body().string();
 
-            if ( code < 200 || code > 200 ) {
+            if ( code < 200 || code > 299 ) {
                 System.out.println( string + code );
             }
 

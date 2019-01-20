@@ -9,6 +9,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 
 public class Client {
@@ -19,9 +20,9 @@ public class Client {
         NONE
     }
 
-    private static final Menu menuWithoutLogin = new Menu( new String[] { "Login", "Criar conta", "Subscrever", "De-Subscrever Notificaçoes", "Minhas subscrições", "Listar empresas", "Listar leilões" } );
-    private static final Menu menuInvestors    = new Menu( new String[] { "Licitar", "Subscrever Emissao Taxa Fixa", "Subscrever Notificaçoes", "De-Subscrever Notificaçoes", "Minhas subscrições", "Listar empresas", "Listar leilões", } );
-    private static final Menu menuCompanys     = new Menu( new String[] { "Criar leila", "Criar leilao com taxa fixa", "Subscrever Notificaçoes", "De-Subscrever Notificaçoes", "Minhas subscrições", "Listar empresas", "Listar leilões", } );
+    private static final Menu menuWithoutLogin = new Menu( new String[] { "Login", "Criar conta", "Subscrever", "De-Subscrever Notificações", "Minhas subscrições", "Listar empresas", "Listar leilões" } );
+    private static final Menu menuInvestors    = new Menu( new String[] { "Licitar", "Subscrever Emissao Taxa Fixa", "Subscrever Notificações", "De-Subscrever Notificações", "Minhas subscrições", "Listar empresas", "Listar leilões", } );
+    private static final Menu menuCompanys     = new Menu( new String[] { "Criar leilão", "Criar emissão com taxa fixa", "Subscrever Notificações", "De-Subscrever Notificações", "Minhas subscrições", "Listar empresas", "Listar leilões" } );
 
     private final Scanner s;
 
@@ -96,9 +97,6 @@ public class Client {
                 listCompanies();
                 break;
             case 6:
-                listCompanies();
-                break;
-            case 7:
                 listAuctions();
                 break;
         }
@@ -133,7 +131,6 @@ public class Client {
     }
 
     private void showMenuWithoutLogin () throws IOException {
-
         System.out.println( menuWithoutLogin.toString() );
 
         switch ( menuWithoutLogin.getOption() ) {
@@ -183,10 +180,10 @@ public class Client {
     }
 
     private void createAuction () throws IOException {
-        System.out.print( "Qual a quantidade de dinheiro a pedir em leilao: " );
+        System.out.print( "Qual a quantidade de dinheiro a pedir em leilão: " );
         int amount = Integer.parseInt( s.nextLine() );
 
-        System.out.print( "Qual a taxa de juros maxima do leilao: " );
+        System.out.print( "Qual a taxa de juros maxima do leilão: " );
         float rate = Float.parseFloat( s.nextLine() );
 
         this.middleware.sendMsgCompany( Protos.MsgCompany.Type.AUCTION, amount, rate );
@@ -199,14 +196,14 @@ public class Client {
         System.out.print( "Qual a quantidade de dinheiro a licitar: " );
         int amount = Integer.parseInt( s.nextLine() );
 
-        System.out.print( "Qual a taxa de juros da licitaçao: " );
+        System.out.print( "Qual a taxa de juros da licitação: " );
         float rate = Float.parseFloat( s.nextLine() );
 
         this.middleware.sendMsgInvestor( company, amount, rate );
     }
 
     private void toEmission () throws IOException {
-        System.out.print( "Qual a empresa a subscrever emissao taxa fixa: " );
+        System.out.print( "Qual a empresa a subscrever emissão taxa fixa: " );
         int company = this.directory.getCompanyId( s.nextLine() );
 
         System.out.print( "Qual a quantidade de dinheiro a subscrever: " );
@@ -215,8 +212,36 @@ public class Client {
         this.middleware.sendMsgInvestor( company, amount );
     }
 
-    private void listAuctions () {
+    private void listAuctions () throws IOException {
+        List< DirectoryClient.Auction > auctions = this.directory.listAuctions()
+                .stream()
+                .filter( DirectoryClient.Auction::isOpen )
+                .collect( Collectors.toList() );
 
+        List< DirectoryClient.Emission > emissions = this.directory.listEmissions()
+                .stream()
+                .filter( DirectoryClient.Emission::isOpen )
+                .collect( Collectors.toList() );
+
+        System.out.println( "#### Leilões ####" );
+
+        if ( auctions.size() == 0 ) {
+            System.out.println( "---- Sem leilões a decorrer... ----" );
+        }
+
+        for ( DirectoryClient.Auction auction : auctions ) {
+            System.out.printf( "%s: montante %d e taxa de juro maxima %f.\n", this.directory.getCompanyName( auction.getCompany() ), auction.getAmount(), auction.getMaxInterestRate() );
+        }
+
+        System.out.println( "#### Emissões Taxa Fixa ####" );
+
+        if ( emissions.size() == 0 ) {
+            System.out.println( "---- Sem emissões de taxa fixa a decorrer... ----" );
+        }
+
+        for ( DirectoryClient.Emission emission : emissions ) {
+            System.out.printf( "%s: montante %d e taxa de juro %f.\n", this.directory.getCompanyName( emission.getCompany() ), emission.getAmount(), emission.getInterestRate() );
+        }
     }
 
     private void listCompanies () {
@@ -238,12 +263,12 @@ public class Client {
     }
 
     private void listSubscriptions () {
-        System.out.println( "#### Subscriçoes ####" );
+        System.out.println( "#### Subscrições ####" );
 
         List< String > subscriptions = this.middleware.getMailbox().getSubscriptions();
 
         if ( subscriptions.size() == 0 ) {
-            System.out.println( "---- Sem subscricoes ativas... ----" );
+            System.out.println( "---- Sem subscricões ativas... ----" );
         }
 
         for ( String sub : subscriptions ) {
@@ -258,7 +283,7 @@ public class Client {
 
             this.middleware.getMailbox().subscribe( String.format( "<comp:%d>", company ) );
         } catch ( IOException e ) {
-            System.out.println( "A empresa nao foi encontrada." );
+            System.out.println( "A empresa não foi encontrada." );
 
             e.printStackTrace();
         }
@@ -271,7 +296,7 @@ public class Client {
 
             this.middleware.getMailbox().unsubscribe( String.format( "<comp:%d>", company ) );
         } catch ( IOException e ) {
-            System.out.println( "A empresa nao foi encontrada." );
+            System.out.println( "A empresa não foi encontrada." );
 
             e.printStackTrace();
         }
@@ -281,7 +306,7 @@ public class Client {
 
         Protos.Authentication.UserType type;
 
-        System.out.print( "Pretende criar um investior ( escolha \"1\") ou uma empresa ( outra letra ): " );
+        System.out.print( "Pretende criar um investidor ( escolha \"1\") ou uma empresa ( outra letra ): " );
         char option = s.nextLine().charAt( 0 );
 
         if ( option == '1' ) { type = Protos.Authentication.UserType.INVESTOR; } else {
@@ -298,7 +323,7 @@ public class Client {
 
         Protos.ServerResponse response = middleware.getMailbox().readResponse();
 
-        if ( response.hasError() ) { System.out.println( "Invalido, tente novamente." ); } else {
+        if ( response.hasError() ) { System.out.println( "Inválido, tente novamente." ); } else {
             System.out.println( "Conta criada com sucesso. " );
         }
     }
@@ -323,7 +348,7 @@ public class Client {
 
         Protos.ServerResponse response = middleware.getMailbox().readResponse();
 
-        if ( response.hasError() ) { System.out.println( "Invalido, tente novamente." ); } else {
+        if ( response.hasError() ) { System.out.println( "Inválido, tente novamente." ); } else {
             System.out.println( "Login aceite, bem vindo. " );
 
             if ( type.equals( Protos.Authentication.UserType.COMPANY ) ) { state = State.COMPANY; } else {
