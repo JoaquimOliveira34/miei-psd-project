@@ -82,6 +82,16 @@ public class peerlending implements Serializable {
     private Company getCompanyById ( int id ) {
         return this.companies.values().stream().filter( company -> company.getId() == id ).findFirst().orElse( null );
     }
+    public boolean auctionsOpen(Company c){
+        boolean isOpen = false;
+        for(Integer a: c.getAuctions())
+            if (!this.auctions.get(a).isClosed()){
+                isOpen= true;
+                break;
+            }
+         return isOpen;
+
+    }
 
     public peerlending(){
         this.companies = this.companiesStorage.load().orElse( new HashMap<>() );
@@ -276,9 +286,12 @@ public class peerlending implements Serializable {
     @Path("/company/{name}")
     public Response deleteCompany(@PathParam("name") String name) {
         if (this.companies.containsKey(name)) {
-            this.companies.remove(name);
-            writeInvestors();
-            return Response.ok(true).build();
+            if(!this.auctionsOpen(this.companies.get(name))) {
+                this.companies.remove(name);
+                writeInvestors();
+                return Response.ok(true).build();
+            }
+            else return Response.status(409).build();
         }
         else return Response.noContent().build();//verificar se n tem auction ativa
     }
